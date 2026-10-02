@@ -1,0 +1,13 @@
+From: deals@shopmail.example
+To: friend@gmail.com
+Subject: 50% off everything - Don't miss out!
+Date: Wed, 30 Sep 2026 11:00:00 +0530
+List-Unsubscribe: <https://shopmail.example/unsubscribe>
+Precedence: bulk
+
+Hi there,
+
+Our biggest sale of the season is here. Enjoy 50% off all orders through Sunday.
+Shop now while stock lasts.
+
+Unsubscribe at any time.

@@ -1,0 +1,10 @@
+From: billing@utilityco.example
+To: friend@gmail.com
+Subject: Fee payment overdue
+Date: Wed, 30 Sep 2026 10:00:00 +0530
+
+Your electricity bill from last month is unpaid and now overdue.
+
+Payment can still be made without a late charge this week.
+
+Billing Team

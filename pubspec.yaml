@@ -1,0 +1,63 @@
+name: heads_up
+description: "Heads Up — the 3 things that need you today, on your home screen."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # On-device Gemma inference
+  flutter_gemma: ^1.11.3
+  flutter_gemma_litertlm: ^1.0.1 # LiteRT-LM engine (required alongside flutter_gemma)
+
+  # IMAP
+  enough_mail: ^2.1.7
+
+  # Home screen widget bridge
+  home_widget: ^0.10.0
+
+  # Background tasks
+  workmanager: ^0.10.10
+
+  # Offline TTS fallback
+  flutter_tts: ^4.2.5
+
+  # Audio playback (local mp3 files)
+  just_audio: ^0.10.6
+
+  # HTTP (ElevenLabs REST)
+  dio: ^5.7.0
+
+  # Secrets storage (Android KeyStore backed)
+  flutter_secure_storage: ^11.2.0
+
+  # Local database
+  sqflite: ^2.3.3+1
+  shared_preferences: ^2.3.3
+
+  # File paths
+  path_provider: ^2.1.4
+
+  # Date formatting
+  intl: ^0.19.0
+
+  # HTML -> text conversion
+  html: ^0.15.4
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/default_rules.json

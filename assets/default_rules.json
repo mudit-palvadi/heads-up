@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "actionWords": [
+    "deadline", "due", "due date", "last date", "last day",
+    "submit", "submission", "upload", "fill",
+    "action required", "action needed", "response required",
+    "urgent", "urgently", "immediate", "immediately",
+    "reminder", "final reminder", "last reminder",
+    "confirm", "confirmation", "verify", "verification",
+    "reply by", "respond by", "get back",
+    "expires", "expiring", "expiry",
+    "rsvp",
+    "interview", "offer letter", "offer",
+    "fee", "fees", "payment", "pay now", "invoice",
+    "form", "application", "enroll", "enrolment",
+    "incomplete", "pending", "awaiting",
+    "please complete", "kindly complete",
+    "overdue", "missed"
+  ],
+  "vipAddresses": [],
+  "vipDomains": [],
+  "vipKeywords": [],
+  "ignoreAddresses": [],
+  "ignoreDomains": [],
+  "scoreThreshold": 30,
+  "deadlineWindowDays": 14,
+  "maxItemsPerRun": 5
+}

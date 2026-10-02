@@ -1,0 +1,13 @@
+From: organizer@makerspace.example
+To: friend@gmail.com
+Subject: Meeting on Monday - please confirm
+Date: Thu, 01 Oct 2026 16:40:00 +0530
+
+Hi,
+
+Confirming the makerspace meeting. Please confirm by Monday that you can make it.
+
+Bring your own laptop if you have one. Pizza is covered.
+
+See you there,
+Priya

@@ -1,0 +1,14 @@
+From: payments@unionbank.example
+To: friend@gmail.com
+Subject: Payment due Friday
+Date: Thu, 01 Oct 2026 08:30:00 +0530
+
+Dear Customer,
+
+Your scheduled payment of 4,250 is due on Friday. Please pay now using the
+banking app or the attached invoice.
+
+If the payment is overdue, a late fee of 150 will be added to your next statement.
+
+Regards,
+Union Bank Payments

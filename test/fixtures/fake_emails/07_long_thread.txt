@@ -1,0 +1,12 @@
+From: teammate.sam@example.org
+To: friend@gmail.com
+Subject: Re: notes from Tuesday
+Date: Wed, 30 Sep 2026 12:15:00 +0530
+In-Reply-To: <notes-tuesday@example.org>
+
+Looks good to me. I will take the second half.
+
+On Tue, 29 Sep 2026, Sam wrote:
+> Here are the notes from Tuesday. Let me know if anything needs fixing.
+> Section two still has the old numbers in it.
+> -- Sam

@@ -1,0 +1,10 @@
+From: mailer@promo.example
+To: friend@gmail.com
+Subject: Weekly roundup
+Date: Thu, 01 Oct 2026 07:30:00 +0530
+List-Unsubscribe: <https://promo.example/u/xyz>
+Precedence: list
+
+Your weekly roundup of five things worth reading.
+
+Manage preferences | View in browser

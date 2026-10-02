@@ -1,0 +1,14 @@
+From: admissions@university.edu
+To: friend@gmail.com
+Subject: URGENT: Enrollment Form Due Oct 10
+Date: Thu, 01 Oct 2026 10:00:00 +0530
+
+Dear Student,
+
+Your enrollment form for the upcoming semester must be submitted by October 10, 2026.
+Please upload your ID proof and the signed declaration on the student portal.
+
+Failure to submit by the deadline will result in cancellation of your enrollment.
+
+Student Services
+University of Example

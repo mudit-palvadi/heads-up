@@ -1,0 +1,14 @@
+From: neighbor.rahul@example.com
+To: friend@gmail.com
+Subject: Quick question about the room
+Date: Thu, 01 Oct 2026 21:14:00 +0530
+
+Hey,
+
+Sorry for the late message. I need a yes or no about the room booking by tonight
+so I can tell the owner. Can you please confirm either way?
+
+Also the window is broken, no rush on that.
+
+Thanks,
+Rahul

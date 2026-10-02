@@ -1,0 +1,14 @@
+From: admin@university.edu
+To: friend@gmail.com
+Subject: Please complete the hostel form
+Date: Thu, 01 Oct 2026 13:10:00 +0530
+
+Namaste,
+
+Hostel allotment forms are open. Please complete the form and pay the hostel fee
+by tomorrow to hold your room.
+
+कृपया फ़ॉर्म कल तक भर दें।
+
+Hostel Office
+University of Example

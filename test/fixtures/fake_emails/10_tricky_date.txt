@@ -1,0 +1,14 @@
+From: it-helpdesk@campus.example
+To: friend@gmail.com
+Subject: Action required: update your account details
+Date: Thu, 01 Oct 2026 09:05:00 +0530
+
+Hello,
+
+Action required: your account details need to be updated within 3 days.
+
+Please confirm your address and phone number on the portal. Accounts that are not
+updated will be locked automatically.
+
+IT Helpdesk
+Campus Services

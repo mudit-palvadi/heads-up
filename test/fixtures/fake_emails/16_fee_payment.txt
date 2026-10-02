@@ -1,0 +1,10 @@
+From: fees@university.edu
+To: friend@gmail.com
+Subject: Tuition fee payment due tomorrow
+Date: Thu, 01 Oct 2026 09:00:00 +0530
+
+Your tuition fee payment of 48,000 is due tomorrow.
+
+Late payments add a 2% penalty per week. Pay now through the portal.
+
+Accounts Department

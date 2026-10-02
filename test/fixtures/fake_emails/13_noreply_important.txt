@@ -1,0 +1,13 @@
+From: noreply@scholarships.example
+To: friend@gmail.com, coordinator@university.edu
+Subject: Scholarship deadline notice
+Date: Thu, 01 Oct 2026 07:00:00 +0530
+
+Automated notice.
+
+The scholarship renewal list has not been updated for this term. Students who were
+renewed last term will see the new status after processing.
+
+Reply to this mail to reach the scholarship office.
+
+Scholarship System

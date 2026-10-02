@@ -1,0 +1,17 @@
+From: newsletter@dailybrief.example
+To: friend@gmail.com
+Subject: Your daily brief is here
+Date: Thu, 01 Oct 2026 06:00:00 +0530
+List-Unsubscribe: <https://dailybrief.example/unsubscribe?id=abc123>
+Precedence: bulk
+
+<html>
+<body>
+<div class="header"><h1>The Daily Brief</h1></div>
+<div class="content">
+<p>Here are today's stories. Click the link below to read more.</p>
+<ul><li>Markets close higher</li><li>New transit line opens</li></ul>
+<p style="font-size:11px">Manage preferences | View in browser</p>
+</div>
+</body>
+</html>
