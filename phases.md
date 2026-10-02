@@ -25,14 +25,33 @@
 
 ### Phase 0: Scaffold (30 min)
 
-- [ ] `flutter create --org com.headsup --project-name heads_up .` in workspace
-- [ ] Set `minSdk = 30` and `abiFilters 'arm64-v8a'` in `android/app/build.gradle`
-- [ ] Add all dependencies to `pubspec.yaml` (see `architecture.md` §3)
-- [ ] Run `flutter pub get`
-- [ ] Create `.gitignore` (must include `*.env`, `secrets.dart`, `*.jks`, `*.keystore`)
-- [ ] Copy `prd.md`, `architecture.md`, `rules.md`, `phases.md` into repo root
-- [ ] Initial commit: `"chore: scaffold flutter project, add docs"`
-- [ ] Push to GitHub
+- [x] `flutter create --org com.headsup --project-name heads_up .` in workspace
+- [x] Set `minSdk = 30` and `abiFilters 'arm64-v8a'` in `android/app/build.gradle`
+- [x] Add all dependencies to `pubspec.yaml` (see `architecture.md` §3)
+- [x] Run `flutter pub get`
+- [x] Create `.gitignore` (must include `*.env`, `secrets.dart`, `*.jks`, `*.keystore`)
+- [x] Copy `prd.md`, `architecture.md`, `rules.md`, `phases.md` into repo root
+- [x] Initial commit: `"chore: scaffold flutter project, add docs"`
+- [ ] Push to GitHub *(needs a remote — repo must be created after Oct 2, 7:30 AM IST)*
+
+> **Config deviations from `architecture.md` §4** (both forced, both verified by building):
+> 1. **Generated files are Kotlin DSL** (`build.gradle.kts`), not the Groovy `build.gradle` in the doc.
+> 2. **`compileSdk` is 36, not 35.** `androidx.core:core:1.17.0` arrives transitively and *requires*
+>    compileSdk 36+; the build hard-fails at 35. `targetSdk` stays 35 so we don't opt into new
+>    runtime behavior, `minSdk` stays 30 for LiteRT-LM.
+> 3. **`minifyEnabled = false` line removed** — AGP 9 rejects the property under the new DSL, and it is
+>    already the default, so behavior is unchanged.
+>
+> **Forward-compat warning (not blocking):** `flutter_tts`, `home_widget`, and `workmanager_android`
+> still apply the legacy Kotlin Gradle Plugin. Flutter warns that future versions will *fail* on this.
+> If a later Flutter upgrade breaks the build, bump those three first.
+
+### Phase 0b: models (done ahead of Phase 1)
+
+- [x] `assets/default_rules.json` — default action words + thresholds (see `rules.md` §6)
+- [x] Add `assets/` to `flutter.assets` in pubspec.yaml
+- [x] `lib/models/mail_item.dart` — MailItem, AudioSource, ItemStatus (see `architecture.md` §5.1)
+- [x] `lib/models/settings.dart` — AppSettings (see `architecture.md` §5.2)
 
 ### Phase 1: Fake email fixtures (45 min)
 
@@ -60,33 +79,44 @@ University of Example
 
 Write all 20 now. They are used in tests AND as Gemma test inputs.
 
-- [ ] `01_college_form_deadline.txt`
-- [ ] `02_friend_yes_no.txt`
-- [ ] `03_bank_payment_due.txt`
-- [ ] `04_newsletter_promo.txt`
-- [ ] `05_otp.txt`
-- [ ] `06_calendar_invite.txt`
-- [ ] `07_long_thread.txt`
-- [ ] `08_html_heavy.txt`
-- [ ] `09_no_deadline.txt`
-- [ ] `10_tricky_date.txt`
-- [ ] `11_manager_reply.txt`
-- [ ] `12_interview_offer.txt`
-- [ ] `13_noreply_important.txt`
-- [ ] `14_non_english_line.txt`
-- [ ] `15_past_deadline.txt`
-- [ ] `16_fee_payment.txt`
-- [ ] `17_bulk_important.txt`
-- [ ] `18_short_reply.txt`
-- [ ] `19_unsubscribe_only.txt`
-- [ ] `20_form_submission.txt`
+- [x] `01_college_form_deadline.txt`
+- [x] `02_friend_yes_no.txt`
+- [x] `03_bank_payment_due.txt`
+- [x] `04_newsletter_promo.txt`
+- [x] `05_otp.txt`
+- [x] `06_calendar_invite.txt`
+- [x] `07_long_thread.txt`
+- [x] `08_html_heavy.txt`
+- [x] `09_no_deadline.txt`
+- [x] `10_tricky_date.txt`
+- [x] `11_manager_reply.txt`
+- [x] `12_interview_offer.txt`
+- [x] `13_noreply_important.txt`
+- [x] `14_non_english_line.txt`
+- [x] `15_past_deadline.txt`
+- [x] `16_fee_payment.txt`
+- [x] `17_bulk_important.txt`
+- [x] `18_short_reply.txt`
+- [x] `19_unsubscribe_only.txt`
+- [x] `20_form_submission.txt`
 
-### Phase 2: Data models (20 min)
+> Each fixture is designed so the expected score in `rules.md` §8 actually holds under the §2 scoring
+> table. Notable calibrations:
+> - `13_noreply_important` needs a **VIP keyword** to land at `+20` — the `-60` noreply penalty cannot be
+>   overcome by anything else, so "Borderline ≥ 10" is only reachable via `vipKeywords`.
+> - `17_bulk_important` is the VIP-override case: `-100` (List-Unsubscribe) `-80` (bulk) `-60` (noreply)
+>   `-30` (promo) floors it at 30 via `rules.md` §2.3, which is the "≥ 20, VIP overrides bulk" row.
+> - `18_short_reply` lands at exactly `65` = VIP address `+50` + `In-Reply-To` `+15`, no body action word.
+> - `15_past_deadline` has **no resolvable future date** in its body (deliberate — it is the past-deadline
+>   case), so its `≥ 30` comes from subject action words. Its "was Oct 5" deadline assertion will need an
+>   injected clock in the test, since the fixture is static but the window filter is relative to now.
 
-- [ ] `lib/models/mail_item.dart` — MailItem, AudioSource, ItemStatus (see `architecture.md` §5.1)
-- [ ] `lib/models/settings.dart` — AppSettings (see `architecture.md` §5.2)
-- [ ] `assets/default_rules.json` — default action words, thresholds (see `rules.md` §6)
-- [ ] Add `assets/` to `flutter.assets` in pubspec.yaml
+### Phase 2: Data models (20 min) — moved to Phase 0b, done
+
+- [x] `lib/models/mail_item.dart` — MailItem, AudioSource, ItemStatus (see `architecture.md` §5.1)
+- [x] `lib/models/settings.dart` — AppSettings (see `architecture.md` §5.2)
+- [x] `assets/default_rules.json` — default action words, thresholds (see `rules.md` §6)
+- [x] Add `assets/` to `flutter.assets` in pubspec.yaml
 
 ### Phase 3: Cleaner + RulesEngine (1.5 hrs)
 
