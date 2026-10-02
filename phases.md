@@ -46,6 +46,41 @@
 > still apply the legacy Kotlin Gradle Plugin. Flutter warns that future versions will *fail* on this.
 > If a later Flutter upgrade breaks the build, bump those three first.
 
+### Verified build facts (measured, not assumed)
+
+| Check | Result |
+|---|---|
+| `package` / `applicationId` | `com.headsup` ✅ |
+| `sdkVersion` (minSdk) | `30` ✅ required by LiteRT-LM |
+| `targetSdkVersion` | `35` ✅ |
+| `compileSdkVersion` | `36` (forced bump, see above) |
+| APK size, debug, all ABIs | 281.1 MB |
+| APK size, release, arm64 only | **124.6 MB** |
+| arm64-v8a payload | 120.2 MB (23 `.so`) |
+| armeabi-v7a / x86_64 residue | 0.1 MB each (2 tiny JNI stubs) |
+
+> **`abiFilters` does NOT filter the Flutter engine.** Engine `.so` files are injected from the
+> extracted engine artifact and bypass the Gradle filter, so a build without
+> `--target-platform android-arm64` ships 67 MB of unusable engine code. `./tool/build_apk.ps1`
+> applies the flag and prints a breakdown so this never silently regresses.
+>
+> **Do not run on an x86_64 emulator.** The manifest still declares all three ABIs while only
+> arm64-v8a carries real libraries, so an emulator install would succeed and then fail to find
+> `libflutter.so`. Physical arm64 device only — which is what Day 2 already assumes.
+>
+> **R8/minification is deliberately OFF.** `flutter_secure_storage` 11.2.0 depends on Tink and
+> ships no consumer ProGuard rules; minifying risks silently breaking storage of the IMAP app
+> password. It would only shrink the ~27 MB of dex, never the ~120 MB of native libs. Do not
+> "optimize" this during the hackathon without a device test.
+>
+> **`flutter_gemma` installs a native-assets build hook** that downloads LiteRT-LM binaries from
+> GitHub releases — including **host** binaries (~76 MB, `litertlm-windows_x86_64.tar.gz`) whenever
+> `flutter test` runs on Windows. Cold `flutter test` is therefore slow and needs GitHub reachable.
+> If it appears to hang with no output, this download is the cause: check
+> `%LOCALAPPDATA%\flutter_gemma\native\` for a truncated `.tar.gz` and resume it. Worth revisiting
+> after the deadline: the pure-logic tests (`MailItem`, rules engine, cleaner) could move to a
+> `core` package with no `flutter_gemma` dependency, making them fast and hermetic.
+
 ### Phase 0b: models (done ahead of Phase 1)
 
 - [x] `assets/default_rules.json` — default action words + thresholds (see `rules.md` §6)

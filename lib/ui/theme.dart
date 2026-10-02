@@ -104,7 +104,9 @@ abstract final class HeadsUpSpacing {
 /// unreadable block of text.
 String clampToWordBudget(String text, {int maxWords = 7}) {
   final words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
-  if (words.length <= maxWords) return text.trim();
+  // Always re-join rather than returning the raw input, so that internal
+  // whitespace runs are collapsed even when the text is within budget.
+  if (words.length <= maxWords) return words.join(' ');
   return '${words.take(maxWords).join(' ')}...';
 }
 
