@@ -153,13 +153,46 @@ Write all 20 now. They are used in tests AND as Gemma test inputs.
 - [x] `assets/default_rules.json` — default action words, thresholds (see `rules.md` §6)
 - [x] Add `assets/` to `flutter.assets` in pubspec.yaml
 
-### Phase 3: Cleaner + RulesEngine (1.5 hrs)
+### Phase 3: Cleaner + RulesEngine (1.5 hrs) — DONE
 
-- [ ] `lib/services/cleaner.dart` — HTML→text, strip quoted replies/signatures/footers, truncate
-- [ ] `lib/services/rules_engine.dart` — full scoring + deadline extraction (see `rules.md`)
-- [ ] `test/cleaner_test.dart` — HTML stripping, quote removal, signature removal, truncation
-- [ ] `test/rules_engine_test.dart` — all test cases from `rules.md` §9
-- [ ] `flutter test test/cleaner_test.dart test/rules_engine_test.dart` ← must pass
+- [x] `lib/services/cleaner.dart` — HTML→text, strip quoted replies/signatures/footers, truncate
+- [x] `lib/services/rules_engine.dart` — full scoring + deadline extraction (see `rules.md`)
+- [x] `lib/models/rules_config.dart` — rules.md §6 config + user-override merge
+- [x] `test/cleaner_test.dart` — HTML stripping, quote removal, signature removal, truncation
+- [x] `test/rules_engine_test.dart` — all test cases from `rules.md` §9 + the §8 fixture table
+- [x] `flutter test` ← **115 tests passing**, `flutter analyze` clean
+
+> **Spec discrepancies found while implementing Phase 3.** Each was resolved in favour of the
+> reading that keeps the product correct, and each is noted at the point of use in the code.
+>
+> 1. **`architecture.md` §7 does not compile against `enough_mail` 2.1.7.** It calls
+>    `msg.receivedDate!`; the real accessor is `msg.date` (`DateTime?`, nullable). `headers` is
+>    `List<Header>?`, also nullable. Adapted.
+> 2. **`rules.md` §3 contradicts itself.** The prose says "whole-word matching where practical";
+>    the code snippet below uses a bare `contains`, which scores "information" and "platform" as
+>    hits for the action word "form". **Prose followed** — §1 says prefer false negatives, and false
+>    positives cost widget slots.
+> 3. **`rules.md` §4.1 Pattern 4 cannot match fixture 12.** The spec requires a `by|before|until|on`
+>    preposition, but `12_interview_offer` says "scheduled for **next Monday**" — "for" is not in
+>    that list, so the fixture's expected deadline is unreachable. Pattern 4 now also accepts a bare
+>    `this/next <weekday>`. A weekday with neither qualifier nor preposition ("meet Monday
+>    afternoons") is still not matched.
+> 4. **`rules.md` §4.3 contradicts §7.** §4.3 says a passed deadline earns `+0` boost but is still
+>    reported; §7's pseudocode adds `+30` whenever `daysAway >= -2`. **§4.3 followed** (more
+>    specific, and boosting a missed deadline would surface stale items).
+> 5. **"next Monday" is deliberately not pushed a further week.** On a Thursday the soonest Monday
+>    is 3 days out; shifting by 7 invents a deadline a week later than reality, which is the worse
+>    error for someone who might otherwise miss it.
+> 6. **`rules.md` §8's expected scores and expected labels cannot both hold at one instant.** The
+>    scores assume `now` ≈ the fixture dates (a deadline only boosts while it is still ahead of
+>    us); the labels assume particular day offsets. Tests therefore fix `now = 2026-10-01 09:00`
+>    explicitly for the §8 score table and assert labels separately with a chosen clock.
+> 7. **`RulesEngine` takes `now` as a constructor argument** instead of calling `DateTime.now()`
+>    inline as §4.2/§4.3 do. Without this, no deadline assertion can be deterministic.
+>
+> **Bug worth remembering:** `_weekdayNames` is 0-based from Monday while `DateTime.weekday` is
+> 1-based. Comparing them directly made "by Friday" resolve to the day the mail arrived. Caught by
+> the "by Friday" unit test, not by the fixture table.
 
 ### Phase 4: Spike A — Gemma on device (1 hr) ← GATE
 
