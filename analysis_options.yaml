@@ -59,6 +59,12 @@ linter:
     # pair that reads better together. Effective Dart treats constructor
     # placement as a readability choice.
 
+    # `prefer_interpolation_to_compose_strings` is deliberately NOT enabled.
+    # It pushes toward `'$_monthToken'`, but the deadline regex fragments in
+    # rules_engine.dart are built inside RAW strings — where interpolation does
+    # not happen. `$_monthToken` inside r'...' is literal text, so the regex
+    # silently matches nothing. Explicit `+` concatenation is correct there.
+
     # Note: `public_member_api_docs` is deliberately NOT enabled. Per-field
     # doc comments on a small app cost more than they clarify. Instead each
     # public type carries a class-level comment naming the spec section it

@@ -117,6 +117,10 @@ FakeEmail loadFakeEmail(String name) {
 /// Fixtures use RFC 5322 dates such as `Thu, 01 Oct 2026 10:00:00 +0530`.
 /// `DateTime.parse` does not accept that shape, so the fields are pulled out
 /// directly — no locale data and no timezone database needed for tests.
+///
+/// Returns a **local** [DateTime], because the rules engine builds deadlines in
+/// local time ("by Friday" means the reader's Friday). Keeping both sides local
+/// also makes the tests independent of the machine's timezone.
 DateTime? parseFixtureDate(String raw) {
   final match = RegExp(
     r'(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s+(\d{2}):(\d{2})(?::(\d{2}))?',
@@ -130,7 +134,7 @@ DateTime? parseFixtureDate(String raw) {
   final month = months[match.group(2)!.toLowerCase()];
   if (month == null) return null;
 
-  return DateTime.utc(
+  return DateTime(
     int.parse(match.group(3)!),
     month,
     int.parse(match.group(1)!),

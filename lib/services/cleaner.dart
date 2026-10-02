@@ -41,7 +41,7 @@ class Cleaner {
   String htmlToText(String source) {
     if (source.trim().isEmpty) return '';
 
-    var prepared = source
+    final prepared = source
         // Drop non-content elements entirely, contents included.
         .replaceAll(
           RegExp(r'<(script|style|head)\b[^>]*>.*?</\1>',
@@ -67,8 +67,8 @@ class Cleaner {
   /// Removes the quoted history — the part that inflates a thread from two
   /// sentences to four pages.
   ///
-  /// Covers the "On <date>, <name> wrote:" form (RFC 3676 §2.1, matched in
-  /// architecture.md §6.2) plus the Outlook/Gmail "Original Message" banner.
+  /// Covers the `On <date>, <name> wrote:` form (RFC 3676 §2.1, matched in
+  /// architecture.md §6.2) plus the Outlook/Gmail `Original Message` banner.
   String stripQuotedReplies(String text) {
     return text
         // Outlook / AppleMail: "-----Original Message-----" onwards.

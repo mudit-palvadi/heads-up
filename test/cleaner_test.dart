@@ -209,7 +209,9 @@ void main() {
     test('fixture dates parse correctly', () {
       final email = loadFakeEmail('01_college_form_deadline');
       final date = parseFixtureDate(email.header('date')!);
-      expect(date, DateTime.utc(2026, 10, 1, 10, 0, 0));
+      // Local time: the rules engine builds deadlines locally ("by Friday"
+      // means the reader's Friday), so fixtures must be local too.
+      expect(date, DateTime(2026, 10, 1, 10, 0, 0));
     });
   });
 }
