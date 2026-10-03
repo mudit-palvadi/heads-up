@@ -52,6 +52,19 @@ class ModelState {
 /// repository whose gated licence must be accepted.
 const String kGemmaHfRepo = 'litert-community/Gemma3-1B-IT';
 
+/// The exact model file to fetch.
+///
+/// The file **must** be named explicitly. Left to itself the manifest resolver
+/// guesses a conventional filename, fails with 404, and the download reports
+/// "Model not found" — which reads like a bad repo id rather than a missing
+/// file argument. Verified against the repo listing on Oct 4: this INT4 build is
+/// 557 MB, matching the "~529 MB" in `architecture.md`.
+///
+/// The other `.litertlm` files in that repo are chipset-specific NPU builds
+/// (`sm8650`, `mt6991`, …). Those must be matched to the actual SoC, so the
+/// generic CPU-capable INT4 build is the safe default.
+const String kGemmaHfFile = 'gemma3-1b-it-int4.litertlm';
+
 class GemmaRuntime {
   GemmaRuntime(this._store);
 
@@ -109,7 +122,7 @@ class GemmaRuntime {
             modelType: ModelType.gemmaIt,
             fileType: ModelFileType.litertlm,
           )
-          .fromHuggingFace(kGemmaHfRepo)
+          .fromHuggingFace(kGemmaHfRepo, file: kGemmaHfFile)
           .withProgress((progress) {
             // Throttled: the callback fires far more often than the UI can
             // repaint, and each emit fans out to a stream.
@@ -157,7 +170,8 @@ class GemmaRuntime {
       return 'That token is not allowed to read this model (403).';
     }
     if (text.contains('404')) {
-      return 'Model not found at $kGemmaHfRepo.';
+      return 'Could not find $kGemmaHfFile in $kGemmaHfRepo. Check the file '
+          'name still exists in that repository.';
     }
     if (text.contains('SocketException') || text.contains('Failed host lookup')) {
       return 'No internet connection. The model needs a one-time download.';
