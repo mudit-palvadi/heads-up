@@ -23,14 +23,24 @@ class WidgetSync {
 
   static const String keyItemCount = 'item_count';
 
-  /// `item0_what`, `item0_do`, and so on. Mirrors the SUFFIX_* constants in
+  /// Prefix for per-row keys: `item0_what`, `item0_do`, and so on.
+  ///
+  /// Mirrors `ROW_KEY_PREFIX` in HeadsUpWidgetProvider.kt. Kept as a named
+  /// constant on both sides so `test/kotlin_contract_test.dart` can assert they
+  /// agree — a mismatch here is invisible at runtime and produces a widget
+  /// whose header renders but whose every text field is blank.
+  static const String rowKeyPrefix = 'item';
+
+  static String rowKey(int i) => '$rowKeyPrefix$i';
+
+  /// Suffixes appended to the row index. Mirrors the SUFFIX_* constants in
   /// HeadsUpWidgetProvider.kt.
-  static String keyWhat(int i) => 'item$i$_sWhat';
-  static String keyDo(int i) => 'item$i$_sDo';
-  static String keyBy(int i) => 'item$i$_sBy';
-  static String keySpeech(int i) => 'item$i$_sSpeech';
-  static String keyAudio(int i) => 'item$i$_sAudio';
-  static String keyUrgent(int i) => 'item$i$_sUrgent';
+  static String keyWhat(int i) => '${rowKey(i)}$_sWhat';
+  static String keyDo(int i) => '${rowKey(i)}$_sDo';
+  static String keyBy(int i) => '${rowKey(i)}$_sBy';
+  static String keySpeech(int i) => '${rowKey(i)}$_sSpeech';
+  static String keyAudio(int i) => '${rowKey(i)}$_sAudio';
+  static String keyUrgent(int i) => '${rowKey(i)}$_sUrgent';
 
   static const String _sWhat = '_what';
   static const String _sDo = '_do';

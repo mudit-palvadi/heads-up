@@ -76,12 +76,40 @@ void main() {
       expect(constant('MAX_ITEMS'), '${WidgetSync.maxItems}');
     });
 
+    test('the per-row key prefix matches on both sides', () {
+      // Regression: Kotlin once used `index.toString()` as the row key, so it
+      // read "0_what" while Dart wrote "item0_what". The widget rendered its
+      // header and three blank rows with no error anywhere, because
+      // item_count is a full key and still resolved. Asserting only the
+      // SUFFIX_* constants would not have caught that.
+      expect(constant('ROW_KEY_PREFIX'), WidgetSync.rowKeyPrefix);
+    });
+
+    test('the row key is built from the shared prefix, not the bare index', () {
+      expect(source, contains('ROW_KEY_PREFIX + index'));
+      expect(source, isNot(contains('val rowKey = index.toString()')));
+    });
+
+    test('Dart builds the same key strings Kotlin composes', () {
+      // The exact strings, side by side, so the two halves of the contract are
+      // pinned in one place.
+      expect(WidgetSync.rowKey(0), '${WidgetSync.rowKeyPrefix}0');
+      expect('${WidgetSync.rowKey(2)}${'_what'}', 'item2_what');
+      expect('${WidgetSync.rowKey(2)}${'_urgent'}', 'item2_urgent');
+    });
+
     test('the Kotlin provider reads rows by suffix, not a shared prefix', () {
       // Guards against a regression where every field collapsed onto one key
       // (which would make item0_what overwrite item0_do at runtime).
       expect(source, contains('rowKey + SUFFIX_WHAT'));
       expect(source, contains('rowKey + SUFFIX_DO'));
       expect(source, isNot(contains('KEY_WHAT_PREFIX')));
+    });
+
+    test('item_count is a full key on both sides', () {
+      // It is the one key that is not per-row, which is exactly why it kept
+      // working while every text field went blank.
+      expect(constant('KEY_ITEM_COUNT'), WidgetSync.keyItemCount);
     });
 
     test('the play button always carries an intent, audio or not', () {

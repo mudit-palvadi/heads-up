@@ -85,7 +85,13 @@ class HeadsUpWidgetProvider : HomeWidgetProvider() {
                 continue
             }
 
-            val rowKey = index.toString()
+            // Shared prefix, asserted against Dart by
+            // test/kotlin_contract_test.dart. Getting this wrong (e.g. using
+            // `index.toString()` alone) yields keys like "0_what" while Dart
+            // writes "item0_what" — the widget then renders the header and rows
+            // correctly but every text field silently blank, because
+            // item_count is a full key and still resolves.
+            val rowKey = ROW_KEY_PREFIX + index
             val what = data.getString(rowKey + SUFFIX_WHAT, "").orEmpty()
             val doIt = data.getString(rowKey + SUFFIX_DO, "").orEmpty()
             val by = data.getString(rowKey + SUFFIX_BY, "").orEmpty()
@@ -138,6 +144,9 @@ class HeadsUpWidgetProvider : HomeWidgetProvider() {
         private const val MAX_ITEMS = 3
 
         const val KEY_ITEM_COUNT = "item_count"
+
+        // Must equal WidgetSync.rowKeyPrefix in Dart. See test/kotlin_contract_test.dart.
+        private const val ROW_KEY_PREFIX = "item"
 
         // Suffixes appended to the row index: "item0_what", "item0_do", ...
         // These must stay in step with WidgetSync in
