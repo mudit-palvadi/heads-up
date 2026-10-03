@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget copy, verbatim from prd.md §3. -->
+    <string name="widget_empty_state">Nothing needs you today ✓</string>
+    <string name="widget_footer">Everything else can wait.</string>
+    <string name="widget_description">The few things that need you today.</string>
+    <string name="play_summary">Play this summary</string>
+
+    <!-- prd.md §3.1: "{n} thing(s) need you today". Singular is handled by the
+         quantity so the widget never says "1 things". -->
+    <plurals name="widget_header">
+        <item quantity="one">%d thing needs you today</item>
+        <item quantity="other">%d things need you today</item>
+    </plurals>
+</resources>

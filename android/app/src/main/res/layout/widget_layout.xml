@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Heads Up home screen widget — prd.md §3.
+
+  Three fixed rows rather than a dynamic container: RemoteViews cannot inflate a
+  variable number of children, so rows are always present and the unused ones
+  are set to GONE.
+
+  empty_state is declared FIRST and carries layout_weight=1. When the other
+  children are GONE it therefore occupies the whole widget and centres itself,
+  with no extra positioning logic in Kotlin.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="16dp">
+
+    <!-- prd.md §3.2: large, calm, high contrast. No footer, no sub-text. -->
+    <TextView
+        android:id="@+id/empty_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="@string/widget_empty_state"
+        android:textColor="@color/heads_up_calm"
+        android:textSize="20sp"
+        android:fontFamily="sans-serif"
+        android:lineSpacingMultiplier="1.3"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/header_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:textColor="@color/heads_up_text_secondary"
+        android:textSize="13sp"
+        android:fontFamily="sans-serif"
+        android:lineSpacingMultiplier="1.3"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/items_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/item0_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/item0_play"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/play_btn_bg"
+                android:contentDescription="@string/play_summary"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_play" />
+
+            <TextView
+                android:id="@+id/item0_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif"
+                android:lineSpacingMultiplier="1.3"
+                android:maxLines="2"
+                android:textColor="@color/heads_up_text_primary"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/item1_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/item1_play"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/play_btn_bg"
+                android:contentDescription="@string/play_summary"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_play" />
+
+            <TextView
+                android:id="@+id/item1_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif"
+                android:lineSpacingMultiplier="1.3"
+                android:maxLines="2"
+                android:textColor="@color/heads_up_text_primary"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/item2_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/item2_play"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/play_btn_bg"
+                android:contentDescription="@string/play_summary"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_play" />
+
+            <TextView
+                android:id="@+id/item2_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif"
+                android:lineSpacingMultiplier="1.3"
+                android:maxLines="2"
+                android:textColor="@color/heads_up_text_primary"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- prd.md §3.1: always present when items are shown, hidden when empty. -->
+    <TextView
+        android:id="@+id/footer_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/widget_footer"
+        android:textColor="@color/heads_up_text_secondary"
+        android:textSize="12sp"
+        android:fontFamily="sans-serif"
+        android:lineSpacingMultiplier="1.3"
+        android:visibility="gone" />
+
+</LinearLayout>

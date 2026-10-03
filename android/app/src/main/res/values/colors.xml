@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Palette from prd.md §7, encoded once here so the widget layout and the
+  drawables cannot drift apart. Contrast ratios against the #1A1A2E background
+  are asserted in test/theme_test.dart.
+-->
+<resources>
+    <color name="heads_up_background">#1A1A2E</color>
+    <color name="heads_up_text_primary">#FFFFFF</color>
+    <!-- 8.8:1 on background. A literal dimmed-white with alpha=0.5 would NOT
+         clear 4.5:1, so the dimming is baked into the colour instead. -->
+    <color name="heads_up_text_secondary">#B8B8CC</color>
+    <color name="heads_up_accent">#FFAB40</color>
+    <color name="heads_up_urgent">#FF6B35</color>
+    <color name="heads_up_calm">#A8E6A3</color>
+    <color name="heads_up_play_scrim">#33FFAB40</color>
+</resources>
