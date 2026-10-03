@@ -9,6 +9,7 @@ library;
 
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:heads_up/models/settings.dart';
 import 'package:just_audio/just_audio.dart';
@@ -30,7 +31,11 @@ class LocalAudio {
   /// Android's storage pressure, and passing a missing path to `just_audio`
   /// throws rather than degrading.
   Future<void> playOrSpeak({required String audioPath, required String speechText}) async {
-    if (audioPath.isNotEmpty && await _existsOnDisk(audioPath)) {
+    final exists = audioPath.isNotEmpty && await _existsOnDisk(audioPath);
+    debugPrint('LocalAudio.playOrSpeak exists=$exists path=$audioPath '
+        'hasText=${speechText.isNotEmpty}');
+
+    if (exists) {
       await play(audioPath);
       return;
     }
@@ -45,12 +50,14 @@ class LocalAudio {
     _player = player;
     try {
       await player.setFilePath(path);
+      debugPrint('LocalAudio: playing $path');
       await player.play();
-    } catch (_) {
+    } catch (e) {
       // A corrupt or unreadable file must not crash the background isolate —
       // there is no UI to show an error on. Fall back to speech if we can.
+      debugPrint('LocalAudio: playback failed for $path: $e');
       await _disposePlayer();
-      rethrow;
+      await speakOffline('Sorry, the audio for this one did not work.');
     }
   }
 
