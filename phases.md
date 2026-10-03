@@ -194,7 +194,10 @@ Write all 20 now. They are used in tests AND as Gemma test inputs.
 > 1-based. Comparing them directly made "by Friday" resolve to the day the mail arrived. Caught by
 > the "by Friday" unit test, not by the fixture table.
 
-### Phase 4: Spike A — Gemma on device (1 hr) ← GATE
+### Phase 4: Spike A — Gemma on device (1 hr) ← GATE (original Day 1 plan, **superseded**)
+
+> Kept for reference. The gate was actually run on Sat Oct 3 night against the real device — see the
+> **PASSED** section below for measurements and outcome.
 
 This is a go/no-go test. **Do this before building VoiceService or Widget.**
 
@@ -211,7 +214,49 @@ This is a go/no-go test. **Do this before building VoiceService or Widget.**
 
 **Capture for write-up:** latency number, phone model, RAM usage screenshot
 
-### Phase 5: Spike B — IMAP (30 min) ← GATE
+### Phase 4: Spike A — Gemma on device (1 hr) ← GATE — **PASSED**
+
+- [x] `lib/services/gemma_runtime.dart` — initialize, download, readiness state
+- [x] `lib/ui/spike_a_screen.dart` — masked token → KeyStore, download progress, latency + raw output
+- [x] Ran on friend's actual phone, fed one synthetic email, captured WHAT/DO/BY + latency
+- [x] **Gate decision: ≤10s/email → keep Gemma 3 1B, no fallback to 270M needed**
+
+**Measured (feeds the DEV post — "What to Measure and Capture"):**
+
+| Metric | Value |
+|---|---|
+| Device | realme RMX3853, Android 16 (SDK 36), arm64-v8a, 7.4 GB RAM |
+| Model | `gemma3-1b-it-int4.litertlm`, 557 MB (584,417,280 bytes on disk) |
+| Repo | `litert-community/Gemma3-1B-IT` (gated; licence accepted) |
+| Engine | LiteRT-LM via `flutter_gemma` 1.11.3 |
+| **Latency, cold** (incl. engine init) | **8,714 ms** |
+| Latency, actual generation | 2,109 ms |
+| — prefill / time-to-first-token | 1,222 ms |
+| — decode | 887 ms over 22 chunks (~23.7 chunks/sec) |
+| RAM during inference | TOTAL PSS 774 MB |
+| Output quality | valid `WHAT/DO/BY`, **accepted by the validator** (not rejected) |
+| Deadline guard | `BY: Oct 10` matched the rules-engine value — no invention |
+
+Raw output from the gate run:
+```
+WHAT: Enrollment form deadline
+DO: Submit your ID proof & declaration
+BY: Oct 10
+```
+
+> **The 8.7 s figure includes one-time LiteRT-LM session/engine setup.** The engine's own
+> instrumentation reports 2,109 ms of generation. Warm runs should sit near 2 s, so the real
+> per-email cost is comfortably inside the gate — worth re-measuring warm before quoting the
+> number in the post, and worth saying so plainly rather than quoting the flattering 2 s alone.
+>
+> **Repo note:** the code downloads from `litert-community/Gemma3-1B-IT`, **not**
+> `google/gemma-3-1b-it` (which the pre-build checklist names). Accept the licence on the former.
+> The `.litertlm` filename must be passed explicitly — left to itself the manifest resolver
+> guesses a conventional name and fails 404. The repo also contains chipset-specific NPU builds
+> (`sm8650`, `mt6991`, …); the generic INT4 build is used deliberately, since matching an NPU
+> variant requires knowing the exact SoC.
+
+### Phase 5: Spike B — IMAP (30 min) ← GATE — **NOT STARTED**
 
 - [ ] `lib/services/mail_service.dart` — connect, examineMailboxByPath, uidFetchMessages with BODY.PEEK[]
 - [ ] Connect to a **test Gmail account** (not friend's real one — use a throwaway account first)
@@ -223,7 +268,7 @@ This is a go/no-go test. **Do this before building VoiceService or Widget.**
 - If authentication fails → check app password is correct, check 2-Step is enabled
 - If Workspace account blocks app passwords → This won't happen (friend confirmed app passwords available)
 
-**End of Day 1 gate:** Both spikes pass → commit everything → sleep.
+**End of Day 1 gate:** Spike A ✅ passed · Spike B ⬜ still open — app password now in hand.
 
 ---
 
