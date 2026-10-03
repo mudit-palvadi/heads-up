@@ -2,15 +2,15 @@
 ///
 /// Specification: architecture.md §8.
 ///
-/// Thin on purpose. The heavy wiring (WorkManager periodic task, Gemma model
-/// load) is added in the phases that build those services — registering a
-/// callback against a service that does not exist yet crashes on first launch.
+/// Thin on purpose. The heavy wiring (WorkManager periodic task) is added in the
+/// phases that build those services — registering a callback against a service
+/// that does not exist yet crashes on first launch.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:heads_up/background/callback_dispatcher.dart';
+import 'package:heads_up/ui/dev_hub.dart';
 import 'package:heads_up/ui/theme.dart';
-import 'package:heads_up/ui/widget_lab.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,10 +32,10 @@ class HeadsUpApp extends StatelessWidget {
       title: 'Heads Up',
       debugShowCheckedModeBanner: false,
       theme: buildHeadsUpTheme(),
-      // Temporary: replaced by status_screen.dart in the UI phase. The widget
-      // lab exists because the widget can only be verified on a real device, and
-      // the mail pipeline is not built yet.
-      home: const WidgetLab(),
+      // Temporary: replaced by status_screen.dart in the UI phase. The dev hub
+      // exists because the widget and the Gemma gate can only be verified on a
+      // real device, and the mail pipeline is not built yet.
+      home: const DevHub(),
     );
   }
 }
