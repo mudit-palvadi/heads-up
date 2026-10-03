@@ -39,12 +39,19 @@ class WidgetSync {
   static const String _sAudio = '_audio';
   static const String _sUrgent = '_urgent';
 
+  /// The rows the widget is allowed to show, in display order.
+///
+/// Split out as a pure function because it encodes a rule that is easy to break
+/// and invisible when broken: architecture.md §8 says the widget shows only the
+/// last *fully processed* items, so an email that has been fetched and scored
+/// but not yet rewritten by Gemma must stay hidden. Exercising this through
+/// `sync` would need a platform channel, so it is tested directly instead.
+static List<MailItem> visibleItems(List<MailItem> items) =>
+    items.where((item) => item.isProcessed).take(maxItems).toList();
+
   /// Writes the widget data and asks Android to redraw.
   Future<void> sync(List<MailItem> items, {String androidName = 'HeadsUpWidgetProvider'}) async {
-    final visible = items
-        .where((item) => item.isProcessed)
-        .take(maxItems)
-        .toList();
+    final visible = visibleItems(items);
 
     // Clear stale rows so a shrunk list does not leave the old text on screen.
     for (var i = 0; i < maxItems; i++) {

@@ -23,7 +23,6 @@ MailItem _item({
   String? speech = 'Form is due. Upload your ID proof.',
   String? audio = '/tmp/tone.wav',
   bool processed = true,
-  bool urgent = true,
 }) {
   final now = DateTime(2026, 10, 2, 9);
   return MailItem(
@@ -76,6 +75,45 @@ void main() {
 
     test('the widget never carries more than three rows (prd.md §3.1)', () {
       expect(WidgetSync.maxItems, 3);
+    });
+  });
+
+  group('visibleItems enforces the fully-processed rule', () {
+    test('hides items Gemma has not rewritten yet (architecture.md §8)', () {
+      final scored = _item(id: 'a', processed: false);
+      expect(scored.score, greaterThanOrEqualTo(30));
+      expect(WidgetSync.visibleItems([scored]), isEmpty);
+    });
+
+    test('shows a fully processed item', () {
+      final done = _item(id: 'a');
+      expect(WidgetSync.visibleItems([done]), hasLength(1));
+    });
+
+    test('caps at three rows even when more are supplied', () {
+      final many = [
+        for (var i = 0; i < 10; i++) _item(id: 'item$i'),
+      ];
+      expect(WidgetSync.visibleItems(many), hasLength(3));
+    });
+
+    test('keeps unprocessed items from displacing processed ones', () {
+      // The filter must run *before* the cap, or an unprocessed row at the top
+      // would eat one of the three slots.
+      final mixed = [
+        _item(id: 'newest-unprocessed', processed: false),
+        _item(id: 'p1'),
+        _item(id: 'p2'),
+        _item(id: 'p3'),
+      ];
+      final visible = WidgetSync.visibleItems(mixed);
+      expect(visible, hasLength(3));
+      expect(visible.every((i) => i.isProcessed), isTrue);
+      expect(visible.map((i) => i.id), isNot(contains('newest-unprocessed')));
+    });
+
+    test('an empty list yields the empty state', () {
+      expect(WidgetSync.visibleItems(const []), isEmpty);
     });
   });
 

@@ -16,14 +16,22 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:heads_up/services/widget_sync.dart';
 
+/// Joins repo-relative path segments with the host separator.
+String _repoPath(List<String> parts) => parts.join(Platform.pathSeparator);
+
 String _kotlinSource() {
-  // Not const: Platform.pathSeparator is not a compile-time constant.
   final candidates = [
-    'android${Platform.pathSeparator}app${Platform.pathSeparator}src'
-        '${Platform.pathSeparator}main${Platform.pathSeparator}kotlin'
-        '${Platform.pathSeparator}com${Platform.pathSeparator}headsup'
-        '${Platform.pathSeparator}heads_up'
-        '${Platform.pathSeparator}HeadsUpWidgetProvider.kt',
+    _repoPath([
+      'android',
+      'app',
+      'src',
+      'main',
+      'kotlin',
+      'com',
+      'headsup',
+      'heads_up',
+      'HeadsUpWidgetProvider.kt',
+    ]),
   ];
   for (final path in candidates) {
     final file = File(path);
@@ -89,9 +97,9 @@ void main() {
     late String manifest;
 
     setUpAll(() {
-      final path = 'android${Platform.pathSeparator}app${Platform.pathSeparator}src'
-          '${Platform.pathSeparator}main${Platform.pathSeparator}AndroidManifest.xml';
-      manifest = File(path).readAsStringSync();
+      manifest = File(
+        _repoPath(['android', 'app', 'src', 'main', 'AndroidManifest.xml']),
+      ).readAsStringSync();
     });
 
     test('the widget provider is registered', () {
@@ -118,10 +126,17 @@ void main() {
     late String layout;
 
     setUpAll(() {
-      final path = 'android${Platform.pathSeparator}app${Platform.pathSeparator}src'
-          '${Platform.pathSeparator}main${Platform.pathSeparator}res'
-          '${Platform.pathSeparator}layout${Platform.pathSeparator}widget_layout.xml';
-      layout = File(path).readAsStringSync();
+      layout = File(
+        _repoPath([
+          'android',
+          'app',
+          'src',
+          'main',
+          'res',
+          'layout',
+          'widget_layout.xml',
+        ]),
+      ).readAsStringSync();
     });
 
     test('has exactly three rows, matching MAX_ITEMS', () {
