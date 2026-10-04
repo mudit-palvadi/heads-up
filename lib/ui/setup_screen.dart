@@ -201,13 +201,21 @@ class _SetupScreenState extends State<SetupScreen> {
       _busy = true;
       _proof = null;
     });
-    await _saveAll();
 
-    final service = MailService();
-    final password =
-        await _store.readSecret(SecretKeys.imapPassword) ?? '';
-
+    // Everything is inside the try, and _busy is reset in the finally.
+    //
+    // Previously _saveAll() and the secret read sat *outside* the try, so any
+    // throw there — a sqflite or KeyStore error — left _busy stuck true. The
+    // buttons stayed greyed out with no message and no way forward, on the one
+    // screen that has to work. A hang here is indistinguishable, to the friend
+    // using it, from a broken app.
+    MailService? service;
     try {
+      await _saveAll();
+
+      service = MailService();
+      final password = await _store.readSecret(SecretKeys.imapPassword) ?? '';
+
       await service.connect(
         host: _host.text.trim(),
         port: int.tryParse(_port.text.trim()) ?? 993,
@@ -246,7 +254,6 @@ class _SetupScreenState extends State<SetupScreen> {
             newlyReadAfterBodyFetch: 0,
             error: e.message,
           );
-          _busy = false;
         });
         return;
       }
@@ -262,7 +269,6 @@ class _SetupScreenState extends State<SetupScreen> {
           messagesFetched: fetched,
           newlyReadAfterBodyFetch: markedByBody,
         );
-        _busy = false;
       });
     } on MailException catch (e) {
       if (!mounted) return;
@@ -277,18 +283,57 @@ class _SetupScreenState extends State<SetupScreen> {
           newlyReadAfterBodyFetch: 0,
           error: e.userFacing,
         );
-        _busy = false;
+      });
+    } catch (e) {
+      // Not a MailException: a socket, TLS or platform error. It still has to
+      // land in the panel rather than becoming a silently stuck button.
+      if (!mounted) return;
+      setState(() {
+        _proof = ReadOnlyProof(
+          connected: false,
+          messagesProbed: 0,
+          alreadyReadBefore: 0,
+          newlyReadAfterExamine: 0,
+          bodyFetchSucceeded: false,
+          messagesFetched: 0,
+          newlyReadAfterBodyFetch: 0,
+          error: 'Could not finish the check: $e',
+        );
       });
     } finally {
-      await service.disconnect();
+      // Best effort: a failing disconnect must not mask the real result, and
+      // must never be the reason the UI stays disabled.
+      try {
+        await service?.disconnect();
+      } catch (_) {
+        // Socket is going away regardless.
+      }
+      // The single place _busy returns to false. Every path above can throw;
+      // this cannot.
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _downloadModel() async {
     setState(() => _busy = true);
-    await _saveAll();
-    await _runtime.ensureModelInstalled();
-    if (mounted) setState(() => _busy = false);
+    // Same reasoning as _testConnection: a throw from either call must not
+    // leave the screen permanently disabled.
+    try {
+      await _saveAll();
+      await _runtime.ensureModelInstalled();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _modelState = ModelState(
+            status: ModelStatus.failed,
+            progress: 0,
+            message: 'Could not download the model: $e',
+          );
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override

@@ -41,6 +41,15 @@ const int kMaxMessageBytes = 500000;
 /// `BODY.PEEK[]` is load-bearing. `BODY[]` would mark messages read.
 const String kReadOnlyFetch = 'BODY.PEEK[] ENVELOPE FLAGS RFC822.SIZE';
 
+/// Upper bound on the TCP/TLS connect and on the login exchange.
+///
+/// Deliberately generous: this runs on a phone over mobile data, and a
+/// premature timeout would fail a connection that was about to succeed. It
+/// exists only so that a server which accepts a socket and then never speaks
+/// cannot leave the UI spinning with no way out — a failure that actually
+/// happened on the first live run of Spike B.
+const Duration kConnectTimeout = Duration(seconds: 30);
+
 /// Why a fetch could not be completed, in terms the status screen can show.
 enum MailFailure {
   /// Could not reach the server, or TLS negotiation failed.
@@ -167,13 +176,25 @@ class MailService {
     required int port,
     required String user,
     required String password,
+    Duration timeout = kConnectTimeout,
   }) async {
     try {
-      await _client.connectToServer(host, port, isSecure: true);
-      await _client.login(user, password);
+      // enough_mail's connectToServer bounds the socket open (20s by default)
+      // but `login` has no timeout of its own — it waits on a server response
+      // indefinitely. A TLS connection that is accepted and then goes quiet
+      // would hang the UI forever, so the pair is bounded together here.
+      await _client
+          .connectToServer(host, port, isSecure: true)
+          .timeout(timeout);
+      await _client.login(user, password).timeout(timeout);
       _connected = true;
     } on ImapException catch (e) {
       throw _translate(e);
+    } on TimeoutException {
+      throw const MailException(
+        MailFailure.connection,
+        'Timed out waiting for the mail server to answer.',
+      );
     } catch (e) {
       throw MailException(MailFailure.connection, e.toString());
     }
