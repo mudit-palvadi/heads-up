@@ -2,14 +2,24 @@
 ///
 /// Specification: architecture.md §8.
 ///
-/// Thin on purpose. The heavy wiring (WorkManager periodic task) is added in the
-/// phases that build those services — registering a callback against a service
-/// that does not exist yet crashes on first launch.
+/// The service graph is built once here and handed to the screens, so there is a
+/// single place that knows how the pieces fit together. Secrets are read from
+/// the KeyStore on demand, never held here.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:heads_up/background/callback_dispatcher.dart';
-import 'package:heads_up/ui/dev_hub.dart';
+import 'package:heads_up/models/rules_config.dart';
+import 'package:heads_up/services/gemma_runtime.dart';
+import 'package:heads_up/services/mail_service.dart';
+import 'package:heads_up/services/pipeline.dart';
+import 'package:heads_up/services/store.dart';
+import 'package:heads_up/ui/rules_screen.dart';
+import 'package:heads_up/ui/setup_screen.dart';
+import 'package:heads_up/ui/status_screen.dart';
 import 'package:heads_up/ui/theme.dart';
 
 Future<void> main() async {
@@ -18,13 +28,17 @@ Future<void> main() async {
   // Must happen before runApp: a widget tap arriving before this is registered
   // has nowhere to go, which looks exactly like a dead play button.
   await registerWidgetCallbacks();
-  await registerBackgroundSync();
 
-  runApp(const HeadsUpApp());
+  final store = Store();
+  await registerBackgroundSync(store: store);
+
+  runApp(HeadsUpApp(store: store));
 }
 
 class HeadsUpApp extends StatelessWidget {
-  const HeadsUpApp({super.key});
+  const HeadsUpApp({super.key, required this.store});
+
+  final Store store;
 
   @override
   Widget build(BuildContext context) {
@@ -32,10 +46,88 @@ class HeadsUpApp extends StatelessWidget {
       title: 'Heads Up',
       debugShowCheckedModeBanner: false,
       theme: buildHeadsUpTheme(),
-      // Temporary: replaced by status_screen.dart in the UI phase. The dev hub
-      // exists because the widget and the Gemma gate can only be verified on a
-      // real device, and the mail pipeline is not built yet.
-      home: const DevHub(),
+      home: _Root(store: store),
     );
+  }
+}
+
+/// Chooses the first screen.
+///
+/// prd.md §6.1 makes setup a *first-run* flow: the friend should not have to
+/// find the settings screen to get started, and equally should not be shown
+/// credential fields after they are already set up.
+class _Root extends StatefulWidget {
+  const _Root({required this.store});
+
+  final Store store;
+
+  @override
+  State<_Root> createState() => _RootState();
+}
+
+class _RootState extends State<_Root> {
+  bool _decided = false;
+  bool _needsSetup = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_decide());
+  }
+
+  Future<void> _decide() async {
+    final password =
+        await widget.store.readSecret(SecretKeys.imapPassword);
+    final needsSetup = password == null || password.isEmpty;
+    if (!mounted) return;
+    setState(() {
+      _needsSetup = needsSetup;
+      _decided = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_decided) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_needsSetup) return const SetupScreen();
+
+    final mail = MailService();
+    return StatusScreen(
+      store: widget.store,
+      runtime: GemmaRuntime(widget.store),
+      mail: mail,
+      pipeline: Pipeline(store: widget.store, mail: mail),
+      onOpenSetup: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const SetupScreen()),
+        );
+        await _decide();
+      },
+      onOpenRules: () async {
+        final base = await _loadBaseRules(widget.store);
+        if (!context.mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => RulesScreen(store: widget.store, base: base),
+          ),
+        );
+      },
+    );
+  }
+
+  static Future<RulesConfig> _loadBaseRules(Store store) async {
+    // Fall back to an empty config: the screen only uses the base lists to
+    // populate its own fields and to power "Reset to defaults".
+    try {
+      final raw = await rootBundle.loadString('assets/default_rules.json');
+      return RulesConfig.fromJsonString(raw);
+    } catch (_) {
+      return const RulesConfig();
+    }
   }
 }

@@ -13,6 +13,9 @@ library;
 
 import 'dart:convert';
 
+/// The rule groups the friend can edit themselves (prd.md §6.3).
+enum RuleListKind { vipAddresses, vipDomains, vipKeywords, ignorePatterns }
+
 class RulesConfig {
   final List<String> actionWords;
   final List<String> vipAddresses;
@@ -102,6 +105,20 @@ class RulesConfig {
       maxItemsPerRun: maxItemsPerRun,
     );
   }
+
+  /// The user-editable subset, read by the VIP Rules screen (prd.md §6.3).
+  ///
+  /// The action-word list is deliberately absent: it is tuned by us, not by the
+  /// friend, and exposing it invites them to break scoring.
+  List<String> valuesFor(RuleListKind kind) => switch (kind) {
+        RuleListKind.vipAddresses => vipAddresses,
+        RuleListKind.vipDomains => vipDomains,
+        RuleListKind.vipKeywords => vipKeywords,
+        // One user-facing group. RulesEngine.isIgnored matches these as both an
+        // exact address and a domain suffix, so a single list covers the
+        // address/domain distinction the model keeps internally.
+        RuleListKind.ignorePatterns => ignoreAddresses,
+      };
 
   Map<String, Object?> toOverrideJson() => {
         'vipAddresses': vipAddresses,
