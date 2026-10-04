@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:heads_up/ui/setup_screen.dart';
 import 'package:heads_up/ui/spike_a_screen.dart';
 import 'package:heads_up/ui/theme.dart';
 import 'package:heads_up/ui/widget_lab.dart';
@@ -28,6 +29,16 @@ class DevHub extends StatelessWidget {
             style: theme.textTheme.labelSmall,
           ),
           const SizedBox(height: HeadsUpSpacing.rowGap),
+          _tile(
+            context,
+            title: 'Set up',
+            subtitle: 'Account, voice, model — and the read-only proof',
+            icon: Icons.settings_outlined,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SetupScreen()),
+            ),
+          ),
+          const SizedBox(height: 8),
           _tile(
             context,
             title: 'Widget lab',
