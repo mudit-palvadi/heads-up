@@ -258,6 +258,42 @@ BY: Oct 10
 
 ### Phase 5: Spike B — IMAP (30 min) ← GATE — **NOT STARTED**
 
+> **Session note — Sun Oct 4, ~21:15.** Service code and the staged read-only
+> proof are built; the proof itself has still not been run against a live
+> account. Findings from the first on-device session with the new UI:
+>
+> - **The app password, ElevenLabs key and HF token are all already in the
+>   KeyStore.** The Setup screen showed `•••••••• saved` in all three fields —
+>   that placeholder (`_savedPlaceholder`) is deliberately shown *instead of* a
+>   real secret, so it is positive evidence the secret exists, not a value.
+> - **What is actually missing is `AppSettings.imapUser` — the email address.**
+>   That is why first-run detection correctly landed on the Setup screen:
+>   without an address the app cannot connect at all. One field is all that
+>   stands between here and Spike B.
+> - **The release build is signed with the debug keys** (`build.gradle.kts:38`),
+>   so `adb install -r app-release.apk` is an in-place update. The KeyStore
+>   entries and the 557 MB model both survive. Verified: model still reported
+>   `ready` after replacing a debug build with a release one.
+>   **Never uninstall.** That would force a re-download through the gated
+>   Hugging Face repo.
+> - **`run-as com.headsup` fails on a release build** (`package not debuggable`).
+>   To inspect app-private files, install `app-debug.apk` instead — it is signed
+>   with the same key, so it also updates in place.
+> - **The launcher component is `com.headsup.heads_up.MainActivity`**, not
+>   `com.headsup.MainActivity`. The applicationId and the Kotlin package differ.
+>   Launch with `adb shell monkey -p com.headsup -c android.intent.category.LAUNCHER 1`.
+> - **Bug found by screenshot, not by tests:** section headings (`Your Gmail
+>   account`, `Voice (optional)`, `Language model`) overlapped the floating
+>   labels of the field beneath them, because `_sectionLabel` had no bottom
+>   padding. Only visible on a real device at real text sizes.
+>
+> **Run the proof in this order, and stop if the FLAGS diff is non-zero — a
+> non-zero diff means the real inbox has been marked read:**
+>
+> 1. Set up → enter the email address → **Test connection**.
+> 2. `probeFlags()` → fetch with `BODY.PEEK[]` → `probeFlags()` again.
+> 3. Both probe results must be identical.
+
 - [ ] `lib/services/mail_service.dart` — connect, examineMailboxByPath, uidFetchMessages with BODY.PEEK[]
 - [ ] Connect to a **test Gmail account** (not friend's real one — use a throwaway account first)
 - [ ] Fetch 5 recent headers + one body — confirm EXAMINE (read-only) works

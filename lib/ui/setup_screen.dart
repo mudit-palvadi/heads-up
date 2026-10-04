@@ -415,8 +415,14 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  Widget _sectionLabel(ThemeData theme, String text) =>
-      Text(text, style: theme.textTheme.bodyMedium);
+  /// Needs bottom padding: a [TextField]'s floating label is drawn above the
+  /// field's own box, so with no gap here the two labels overlap on screen.
+  /// Found by screenshotting the running app, not by a widget test — the
+  /// overflow is a paint-time layout, invisible to `flutter test`.
+  Widget _sectionLabel(ThemeData theme, String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(text, style: theme.textTheme.bodyMedium),
+      );
 
   Widget _modelRow(ThemeData theme) {
     final label = switch (_modelState.status) {

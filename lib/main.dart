@@ -77,9 +77,15 @@ class _RootState extends State<_Root> {
   }
 
   Future<void> _decide() async {
-    final password =
-        await widget.store.readSecret(SecretKeys.imapPassword);
-    final needsSetup = password == null || password.isEmpty;
+    final password = await widget.store.readSecret(SecretKeys.imapPassword);
+    final settings = await widget.store.loadSettings();
+
+    // Both halves are required, not just the password. A saved password with a
+    // blank address still cannot connect, and dropping the friend on the
+    // Status screen to fail at "Refresh now" with no obvious cause would be
+    // worse than asking once more for the one missing field.
+    final needsSetup =
+        password == null || password.isEmpty || settings.imapUser.isEmpty;
     if (!mounted) return;
     setState(() {
       _needsSetup = needsSetup;
