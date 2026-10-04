@@ -29,6 +29,7 @@ import 'dart:async';
 
 // `ImapException` comes through the barrel's imap.dart export.
 import 'package:enough_mail/enough_mail.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'package:heads_up/services/rules_engine.dart';
 
@@ -373,12 +374,35 @@ class MailService {
 /// `enough_mail` 2.1.7 has no `Mailbox.inbox` constant, so it is constructed
 /// explicitly. `architecture.md` §6.1 calls `examineMailboxByPath('INBOX')`,
 /// which does not exist in this version either — hence [examineInbox].
+///
+/// **`flags` must be a growable list.** The `Mailbox` constructor mutates it:
+///
+/// ```dart
+/// if (!isInbox && name.toLowerCase() == 'inbox') {
+///   flags.add(MailboxFlag.inbox);
+/// }
+/// ```
+///
+/// and `isInbox` is itself `hasFlag(MailboxFlag.inbox)`. So an empty list always
+/// fails that guard, the branch always runs, and a `const` list throws
+/// "cannot add to an unmodifiable list" — every time, not intermittently. That
+/// made every IMAP read path (`probeFlags`, `fetchNew`, `newestUid`,
+/// `inboxUidValidity`) fail before it could issue a single command.
+///
+/// Cost of finding this out: the first live run of Spike B. A `const` here is
+/// exactly the kind of tidy-up that looks harmless, so the reason is recorded
+/// here and pinned by a test.
 static Mailbox _inbox() => Mailbox(
       encodedName: 'INBOX',
       encodedPath: 'INBOX',
-      flags: const <MailboxFlag>[],
+      flags: <MailboxFlag>[],
       pathSeparator: '/',
     );
+
+  /// Exposed only so a test can pin [inboxDescriptor]'s behaviour. It is the
+  /// exact value handed to `examineMailbox`, and constructing it must not throw.
+  @visibleForTesting
+  static Mailbox get inboxForTest => _inbox();
 
   void _requireConnection() {
     if (!_connected) {

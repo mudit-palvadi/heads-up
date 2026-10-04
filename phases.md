@@ -189,6 +189,18 @@ Write all 20 now. They are used in tests AND as Gemma test inputs.
 >    explicitly for the §8 score table and assert labels separately with a chosen clock.
 > 7. **`RulesEngine` takes `now` as a constructor argument** instead of calling `DateTime.now()`
 >    inline as §4.2/§4.3 do. Without this, no deadline assertion can be deterministic.
+> 8. **The `Mailbox` descriptor I build to replace `examineMailboxByPath` cannot be built with a
+>    `const` flags list.** `enough_mail`'s `Mailbox` constructor *mutates* the list it is handed
+>    (`if (!isInbox && name.toLowerCase() == 'inbox') flags.add(MailboxFlag.inbox)`), and
+>    `isInbox` is itself `hasFlag(MailboxFlag.inbox)` — so an empty list always trips the guard and
+>    the branch always runs. `const <MailboxFlag>[]` therefore threw *"cannot add to an unmodifiable
+>    list"* on **every** call, which meant `examineInbox()` threw and so did `probeFlags()`,
+>    `fetchNew()`, `newestUid()` and `inboxUidValidity()`. The app could not read mail at all.
+>    Found only by running Spike B for real: **the unit tests all passed** because every one of
+>    them injects a fake `ImapClient`, so the descriptor was never constructed. Fixed with a
+>    growable list; pinned by `test/inbox_descriptor_test.dart`.
+>    **Generalisable lesson: a fake client hides the library's constructors.** The gap is not in
+>    the assertions but in what never ran.
 >
 > **Bug worth remembering:** `_weekdayNames` is 0-based from Monday while `DateTime.weekday` is
 > 1-based. Comparing them directly made "by Friday" resolve to the day the mail arrived. Caught by
@@ -286,6 +298,14 @@ BY: Oct 10
 >   account`, `Voice (optional)`, `Language model`) overlapped the floating
 >   labels of the field beneath them, because `_sectionLabel` had no bottom
 >   padding. Only visible on a real device at real text sizes.
+> - **Spike B run 1 failed with `cannot add to an unmodifiable list`** — see
+>   discrepancy 8 above. `_inbox()` passed `const <MailboxFlag>[]` and
+>   `enough_mail` mutates it. Fixed, plus a behavioural regression test.
+> - **Useful side effect of that failure: authentication is confirmed.** The
+>   proof calls `connect()` before `probeFlags()`, and it got past `connect()`,
+>   so **Gmail accepted the app password for `2024@vitstudent.ac.in`** — TLS
+>   and IMAP login both. The "Workspace may block app passwords" worry below is
+>   now measured rather than assumed.
 >
 > **Run the proof in this order, and stop if the FLAGS diff is non-zero — a
 > non-zero diff means the real inbox has been marked read:**

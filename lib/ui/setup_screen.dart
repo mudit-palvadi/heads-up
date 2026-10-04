@@ -210,6 +210,12 @@ class _SetupScreenState extends State<SetupScreen> {
     // screen that has to work. A hang here is indistinguishable, to the friend
     // using it, from a broken app.
     MailService? service;
+
+    // Whether the IMAP login actually completed. Tracked separately so a
+    // failure *after* a successful login is not reported as "could not
+    // connect" — which is what the first live run did: the app password was
+    // accepted, and the panel implied otherwise.
+    var connected = false;
     try {
       await _saveAll();
 
@@ -222,6 +228,7 @@ class _SetupScreenState extends State<SetupScreen> {
         user: _user.text.trim(),
         password: password,
       );
+      connected = true;
 
       // Stage 1 — flags only. Cannot mark anything read by definition.
       final before = await service.probeFlags();
@@ -274,7 +281,7 @@ class _SetupScreenState extends State<SetupScreen> {
       if (!mounted) return;
       setState(() {
         _proof = ReadOnlyProof(
-          connected: false,
+          connected: connected,
           messagesProbed: 0,
           alreadyReadBefore: 0,
           newlyReadAfterExamine: 0,
@@ -285,19 +292,25 @@ class _SetupScreenState extends State<SetupScreen> {
         );
       });
     } catch (e) {
-      // Not a MailException: a socket, TLS or platform error. It still has to
+      // Not a MailException: a socket, TLS, or platform error. It still has to
       // land in the panel rather than becoming a silently stuck button.
+      //
+      // The message distinguishes the two cases, because they need different
+      // fixes: before the login it is a credentials/network problem, after it
+      // is our bug.
       if (!mounted) return;
       setState(() {
         _proof = ReadOnlyProof(
-          connected: false,
+          connected: connected,
           messagesProbed: 0,
           alreadyReadBefore: 0,
           newlyReadAfterExamine: 0,
           bodyFetchSucceeded: false,
           messagesFetched: 0,
           newlyReadAfterBodyFetch: 0,
-          error: 'Could not finish the check: $e',
+          error: connected
+              ? 'Signed in fine, but the read-only check failed: $e'
+              : 'Could not finish the check: $e',
         );
       });
     } finally {
