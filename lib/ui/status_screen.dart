@@ -28,6 +28,7 @@ class StatusScreen extends StatefulWidget {
     required this.mail,
     this.onOpenSetup,
     this.onOpenRules,
+    this.onOpenDevHub,
   });
 
   final Pipeline pipeline;
@@ -40,6 +41,9 @@ class StatusScreen extends StatefulWidget {
 
   /// The VIP rules screen — the hand-over step in prd.md §9.
   final Future<void> Function()? onOpenRules;
+
+  /// Diagnostic harness, reached by long-pressing the title.
+  final Future<void> Function()? onOpenDevHub;
 
   @override
   State<StatusScreen> createState() => _StatusScreenState();
@@ -128,7 +132,16 @@ class _StatusScreenState extends State<StatusScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Heads Up'),
+        // Long-press opens the diagnostic harness (widget lab, Gemma spike).
+        // Deliberately undiscoverable for the friend, but deliberately not
+        // deleted: whoever he hands the phone to will need to re-download the
+        // model or re-push fabricated widget rows when something looks wrong.
+        title: GestureDetector(
+          onLongPress: widget.onOpenDevHub == null
+              ? null
+              : () => unawaited(widget.onOpenDevHub!()),
+          child: const Text('Heads Up'),
+        ),
         actions: [
           IconButton(
             onPressed: widget.onOpenRules == null

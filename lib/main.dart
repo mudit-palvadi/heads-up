@@ -17,6 +17,7 @@ import 'package:heads_up/services/gemma_runtime.dart';
 import 'package:heads_up/services/mail_service.dart';
 import 'package:heads_up/services/pipeline.dart';
 import 'package:heads_up/services/store.dart';
+import 'package:heads_up/ui/dev_hub.dart';
 import 'package:heads_up/ui/rules_screen.dart';
 import 'package:heads_up/ui/setup_screen.dart';
 import 'package:heads_up/ui/status_screen.dart';
@@ -115,6 +116,11 @@ class _RootState extends State<_Root> {
           MaterialPageRoute<void>(
             builder: (_) => RulesScreen(store: widget.store, base: base),
           ),
+        );
+      },
+      onOpenDevHub: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const DevHub()),
         );
       },
     );

@@ -24,8 +24,9 @@ class DevHub extends StatelessWidget {
         padding: const EdgeInsets.all(HeadsUpSpacing.gutter),
         children: [
           Text(
-            'Temporary development hub. Replaced by the setup and status '
-            'screens once the mail pipeline exists.',
+            'Diagnostic harness. Not part of the friend-facing product — the '
+            'normal launch screen is Status. Reachable by long-pressing the '
+            '"Heads Up" title on the status screen.',
             style: theme.textTheme.labelSmall,
           ),
           const SizedBox(height: HeadsUpSpacing.rowGap),
