@@ -1,5 +1,8 @@
 # Heads Up
 
+MIT licensed — see [`LICENSE`](LICENSE). That covers this source code only; the
+Gemma weights are downloaded at runtime under Google's Gemma Terms of Use.
+
 **The three things that need you today, on your home screen.**
 
 Built for a friend who is dyslexic, rarely opens his email, and misses the
