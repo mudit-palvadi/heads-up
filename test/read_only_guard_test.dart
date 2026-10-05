@@ -170,9 +170,9 @@ void main() {
     // command. Now it asserts the live constant and the real call site.
     test('probeFlags fetches flags only, never content', () {
       expect(
-        kFlagsOnlyFetch,
+        kFlagsOnlyFetch.replaceAll(RegExp(r'[()]'), ''),
         'FLAGS',
-        reason: 'the probe must request only FLAGS',
+        reason: 'the probe must request only FLAGS (parentheses aside)',
       );
       expect(
         kFlagsOnlyFetch,

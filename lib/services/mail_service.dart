@@ -39,8 +39,16 @@ const int kMaxMessageBytes = 500000;
 
 /// The one fetch definition this app is allowed to use.
 ///
-/// `BODY.PEEK[]` is load-bearing. `BODY[]` would mark messages read.
-const String kReadOnlyFetch = 'BODY.PEEK[] ENVELOPE FLAGS RFC822.SIZE';
+/// **`BODY.PEEK[]` is load-bearing.** `BODY[]` would mark messages read.
+///
+/// **The parentheses are load-bearing too.** `enough_mail` documents its
+/// criteria in this parenthesised form (`'(ENVELOPE BODY.PEEK[])'`, see
+/// `ImapClient.fetchRecentMessages`) and its own high-level API always emits
+/// them. Without them Gmail rejects a multi-item fetch with
+/// `BAD Could not parse command` — found on the fourth live Spike B run. A
+/// single unparenthesised item happens to parse, which is why the flags-only
+/// probe worked while this one did not.
+const String kReadOnlyFetch = '(BODY.PEEK[] ENVELOPE FLAGS RFC822.SIZE)';
 
 /// Fetch data items for a flags-only probe.
 ///
@@ -52,7 +60,7 @@ const String kReadOnlyFetch = 'BODY.PEEK[] ENVELOPE FLAGS RFC822.SIZE';
 /// `enough_mail` parses the UID out of the response regardless of what was
 /// requested (`FetchParser._parseFetch` handles `case 'UID'` on the response
 /// side), so nothing is lost by leaving it out.
-const String kFlagsOnlyFetch = 'FLAGS';
+const String kFlagsOnlyFetch = '(FLAGS)';
 
 /// Upper bound on the TCP/TLS connect and on the login exchange.
 ///
@@ -62,6 +70,14 @@ const String kFlagsOnlyFetch = 'FLAGS';
 /// cannot leave the UI spinning with no way out — a failure that actually
 /// happened on the first live run of Spike B.
 const Duration kConnectTimeout = Duration(seconds: 30);
+
+/// Renders the IMAP command [MailService] would send, for error messages.
+///
+/// Three of the four live Spike B failures were only diagnosable once the panel
+/// printed the server's reply, and knowing *which* command drew it turned two
+/// rounds of guessing into one screenshot. Cheap enough to always include.
+String describeFetch(String sequence, String definition) =>
+    'UID FETCH $sequence $definition';
 
 /// Why a fetch could not be completed, in terms the status screen can show.
 enum MailFailure {
@@ -259,7 +275,14 @@ class MailService {
     // If the server rebuilt the mailbox every UID we remember is meaningless,
     // so restart from scratch rather than skipping the entire inbox
     // (architecture.md §6.1).
-    final sequence = MessageSequence()..addRangeToLast(lastUid + 1);
+    //
+    // `take` was silently ignored until now, so the first run of a fresh
+    // install asked for `1:*` — the entire mailbox. Bounded to the newest
+    // [take] messages, which is also what the widget wants.
+    final newest = await newestUid();
+    final start =
+        lastUid > 0 ? lastUid + 1 : (newest - take + 1).clamp(1, newest);
+    final sequence = MessageSequence()..addRange(start, newest);
 
     try {
       final result = await _client.uidFetchMessages(sequence, kReadOnlyFetch);
@@ -271,11 +294,14 @@ class MailService {
 
       return messages.map(_toFetchedMail).toList();
     } on ImapException catch (e) {
-      throw _translate(e);
+      final translated = _translate(e);
+      throw MailException(
+        translated.failure,
+        '${translated.message}\n'
+            'Sent: ${describeFetch('$start:$newest', kReadOnlyFetch)}',
+      );
     }
   }
-
-  /// Highest UID present, so the caller can advance its checkpoint.
   Future<int> newestUid() async {
     _requireConnection();
     final mailbox = await examineInbox();

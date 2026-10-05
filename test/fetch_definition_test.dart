@@ -18,12 +18,24 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:heads_up/services/mail_service.dart';
 
-/// Splits a fetch definition into its individual data items.
+/// Splits a fetch definition into its individual data items, stripping the
+/// wrapping parentheses that `enough_mail` documents and Gmail requires.
 List<String> items(String definition) => definition
+    .replaceAll('(', ' ')
+    .replaceAll(')', ' ')
     .split(RegExp(r'\s+'))
     .map((s) => s.trim())
     .where((s) => s.isNotEmpty)
     .toList();
+
+/// Whether the criteria are wrapped in parentheses.
+///
+/// Load-bearing for anything with more than one item: Gmail rejects an
+/// unparenthesised multi-item fetch with `BAD Could not parse command`, which
+/// is the fourth live Spike B failure. A single item happens to parse either
+/// way, which is why the flags probe succeeded first.
+bool isParenthesised(String definition) =>
+    definition.trimLeft().startsWith('(') && definition.trimRight().endsWith(')');
 
 void main() {
   group('kReadOnlyFetch', () {
@@ -70,9 +82,29 @@ void main() {
     });
   });
 
+  group('every definition is parenthesised', () {
+    test('the body fetch wraps its criteria', () {
+      expect(
+        isParenthesised(kReadOnlyFetch),
+        isTrue,
+        reason: 'enough_mail documents \'(ENVELOPE BODY.PEEK[])\' and Gmail '
+            'rejects an unparenthesised multi-item fetch with BAD',
+      );
+    });
+
+    test('the flags probe does too, for consistency', () {
+      expect(isParenthesised(kFlagsOnlyFetch), isTrue);
+    });
+
+    test('parentheses did not break the BODY.PEEK[] guarantee', () {
+      expect(kReadOnlyFetch, contains('BODY.PEEK[]'));
+      expect(kReadOnlyFetch, isNot(contains('BODY[]')));
+    });
+  });
+
   group('kFlagsOnlyFetch', () {
-    test('is exactly FLAGS', () {
-      expect(kFlagsOnlyFetch, 'FLAGS');
+    test('requests only FLAGS', () {
+      expect(items(kFlagsOnlyFetch), ['FLAGS']);
     });
 
     test('does not request UID — the bug found on device', () {
@@ -82,6 +114,19 @@ void main() {
         reason: 'Gmail answers "BAD Could not parse command" if UID is asked '
             'for explicitly, which silently unmeasures the read-only proof',
       );
+    });
+  });
+
+  group('describeFetch', () {
+    test('renders the command that would go over the wire', () {
+      expect(
+        describeFetch('1:5', kReadOnlyFetch),
+        'UID FETCH 1:5 (BODY.PEEK[] ENVELOPE FLAGS RFC822.SIZE)',
+      );
+    });
+
+    test('carries no secrets', () {
+      expect(describeFetch('1:5', kFlagsOnlyFetch), isNot(contains('password')));
     });
   });
 

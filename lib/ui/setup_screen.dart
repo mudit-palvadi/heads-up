@@ -319,6 +319,8 @@ class _SetupScreenState extends State<SetupScreen> {
         markedByBody = before.newlySeen(afterBody).length;
       } on MailException catch (e) {
         // A read-only violation throws here; record it rather than crashing.
+        // e.message now carries the exact command that was sent, so the next
+        // failure of this kind is diagnosable from the panel alone.
         if (!mounted) return;
         setState(() {
           _proof = ReadOnlyProof(
@@ -330,8 +332,8 @@ class _SetupScreenState extends State<SetupScreen> {
             bodyFetchSucceeded: false,
             messagesFetched: 0,
             newlyReadAfterBodyFetch: 0,
-            error: e.message,
-            errorDetail: 'during the BODY.PEEK[] fetch: ${e.message}',
+            error: e.userFacing,
+            errorDetail: 'during the BODY.PEEK[] fetch:\n${e.message}',
           );
         });
         return;
