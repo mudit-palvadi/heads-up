@@ -22,14 +22,37 @@ This is the honest picture, because "it works" is not a useful claim.
 |---|---|---|
 | Rules engine + cleaner | **Verified** | 20 hand-written fixtures; every pass/fail row in `rules.md` §8 asserted. Pure logic, no device needed. |
 | On-device inference | **Verified on hardware** | Gemma 3 1B-IT via LiteRT-LM on a realme RMX3853 (Android 16). Output passed the `WHAT/DO/BY` validator. Measurements below. |
-| Widget ▶ button → audio | **Verified on hardware** | Two paths proven: ElevenLabs mp3 → `AudioTrack`, and the `flutter_tts` fallback. Audio focus stayed on the launcher. |
-| Widget row/key contract | **Verified** | A test greps the Kotlin provider and the Dart writer and asserts the keys and the 3-row cap agree. |
-| Read-only IMAP | **Unit-tested, not yet run against a live inbox** | Three-layer guard + a self-grepping test. The staged live proof is built into the Setup screen but has not been executed. |
-| ElevenLabs voice | **Unit-tested, not yet run live** | Request shape and payload size are asserted; no real key has been called from the device. |
-| Full pipeline end-to-end | **Unit-tested with fakes only** | `Pipeline.runFull` has never completed against real mail. |
+| Widget rendering + row/key contract | **Verified** | Three rows, urgent accent, and the 3-row cap. A test reads the Kotlin provider and the Dart writer and asserts the keys agree. |
+| Widget ▶ → mp3 audio | **Verified on hardware** | mp3 path reaches `AudioTrack`; audio focus stayed on the launcher. |
+| Widget ▶ → offline TTS | **Broken** | Wired end to end, not working on the device. Undiagnosed — ran out of runway before reading the logs. |
+| IMAP sign-in | **Verified on hardware** | Gmail accepted the app password; TLS and IMAP login both succeeded. |
+| Read-only guarantee | **Enforced + unit-tested, not yet measured** | Six real defects found during live runs (see below). The last blocker is fixed and installed; the confirming run is pending. |
+| ElevenLabs voice | **Unit-tested, never run live** | Request shape, 500-char cap and quota caching asserted. No real call from the phone. |
+| Full pipeline end-to-end | **Unit-tested with fakes only** | `Pipeline.runFull` has never completed against real mail. The widget currently shows fabricated rows from the diagnostic harness. |
 
-The widget has been shown working with fabricated data. It has **not** yet been
-shown pulling a real deadline out of a real inbox and saying it out loud.
+The widget has been shown rendering and playing audio from fabricated data. It
+has **not** yet pulled a real deadline out of a real inbox and said it out loud.
+
+### What live testing cost, and what it bought
+
+Running on a real phone found six defects that 237 green tests had not. All six
+are in `git log` with the reasoning; the two most serious:
+
+- **The app could not read mail at all.** The INBOX descriptor passed
+  `flags: const <MailboxFlag>[]`, and `enough_mail`'s constructor mutates that
+  list — so every IMAP read path threw. Every test was green because every test
+  injected a fake `ImapClient`, so the descriptor was never constructed. The
+  assertions were fine; what never *ran* was the defect.
+- **The proof reported "read-only: VERIFIED" when it had verified nothing.**
+  Every failure path left the before/after counters at `0`, and the verdict read
+  those counters — so a failed run rendered a green tick. The panel now derives
+  its verdict from an explicit stage, and green is reachable only from a fully
+  completed run over a non-empty population.
+
+Three guard tests also turned out to assert on *source text* rather than the
+values the program uses, which made them pass while the bugs above were live.
+They now check live constants and real call sites; each was verified by
+re-injecting the defect.
 
 ---
 
