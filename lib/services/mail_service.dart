@@ -173,12 +173,23 @@ class FetchedMail {
 ///
 /// Used to *prove* nothing changed (prd.md §8).
 class FlagSnapshot {
-  const FlagSnapshot(this.seenUids);
+  const FlagSnapshot(this.seenUids, {this.examined = 0});
 
   /// UIDs that carry `\Seen`.
   final Set<int> seenUids;
 
+  /// How many messages the probe actually looked at.
+  ///
+  /// Needed because "no message became read" over *zero* messages is not a
+  /// pass, it is an absence of evidence. Without this the proof reported
+  /// `PASS — examined 0 messages` on a first successful run and would have
+  /// claimed verification it never performed.
+  final int examined;
+
   int get count => seenUids.length;
+
+  /// True when the probe covered nothing, so a zero diff proves nothing.
+  bool get isEmptyCoverage => examined == 0;
 
   /// UIDs that are marked read in [after] but were not in this snapshot.
   Set<int> newlySeen(FlagSnapshot after) =>
@@ -326,7 +337,7 @@ class MailService {
   Future<FlagSnapshot> probeFlags({int take = 20}) async {
     _requireConnection();
     final mailbox = await examineInbox();
-    if (mailbox.messagesExists == 0) return const FlagSnapshot({});
+    if (mailbox.messagesExists == 0) return const FlagSnapshot({}, examined: 0);
 
     // Walk backwards from the newest so the newest N are covered even in a
     // large mailbox.
@@ -343,6 +354,10 @@ class MailService {
             .where((m) => m.isSeen)
             .map((m) => m.uid ?? 0)
             .toSet(),
+        // How many the probe actually covered, as opposed to how many carried
+        // \Seen. These differ on a mostly-unread mailbox, and conflating them
+        // is what produced "PASS — examined 0 messages".
+        examined: result.messages.length,
       );
     } on ImapException catch (e) {
       throw _translate(e);

@@ -89,28 +89,42 @@ class ReadOnlyProof {
 
   /// The whole guarantee in one boolean: nothing we did marked anything read.
   ///
-  /// Requires a *measured* stage, never just zero counters. A run that failed
-  /// early leaves both counters at 0, and treating that as a pass is exactly
-  /// the false positive this guards against.
+  /// Requires a *measured* stage over a *non-empty* population. Both halves are
+  /// load-bearing:
+  ///
+  /// - A failed run leaves both counters at 0, so zero counters alone must
+  ///   never be read as a pass.
+  /// - A run that covered zero messages also leaves both counters at 0. The
+  ///   first successful connection did exactly that and rendered
+  ///   `PASS — examined 0 messages`, claiming verification it never performed.
   bool get isReadOnly => switch (stage) {
         ProofStage.fullyVerified || ProofStage.examineVerified ||
         ProofStage.flagsVerified =>
           connected &&
+              hasCoverage &&
               newlyReadAfterExamine == 0 &&
               newlyReadAfterBodyFetch == 0,
         ProofStage.notRun => false,
       };
+
+  /// Whether the probe looked at any messages at all.
+  bool get hasCoverage => messagesProbed > 0 || messagesFetched > 0;
 
   /// Nothing was measured, so nothing can be claimed either way.
   bool get isUnverified => stage == ProofStage.notRun;
 
   /// Heading. Three states, never two — a failed run must not read as a pass.
   String get verdict => switch (stage) {
-        ProofStage.fullyVerified => 'Read-only: verified',
-        ProofStage.examineVerified => 'Read-only: partly verified',
-        ProofStage.flagsVerified => 'Read-only: EXAMINE verified only',
-        ProofStage.notRun =>
-          connected ? 'Read-only: not checked' : 'Read-only: not checked',
+        ProofStage.fullyVerified || ProofStage.examineVerified ||
+        ProofStage.flagsVerified =>
+          !hasCoverage
+              ? 'Read-only: nothing to check'
+              : isReadOnly
+                  ? (stage == ProofStage.fullyVerified
+                      ? 'Read-only: verified'
+                      : 'Read-only: partly verified')
+                  : 'Read-only: problem',
+        ProofStage.notRun => 'Read-only: not checked',
       };
 
   String summary() {
@@ -130,7 +144,9 @@ class ReadOnlyProof {
         '$alreadyReadBefore already read; '
         'EXAMINE marked $newlyReadAfterExamine read, '
         'BODY.PEEK marked $newlyReadAfterBodyFetch read. '
-        'Both must be 0.';
+        'Both must be 0. '
+        'Bodies fetched without marking read: $messagesFetched '
+        '(${bodyFetchSucceeded ? 'ok' : 'not attempted'}).';
   }
 }
 
@@ -326,7 +342,7 @@ class _SetupScreenState extends State<SetupScreen> {
           _proof = ReadOnlyProof(
             connected: true,
             stage: stageAfterExamine,
-            messagesProbed: before.count,
+            messagesProbed: before.examined,
             alreadyReadBefore: before.count,
             newlyReadAfterExamine: markedByExamine,
             bodyFetchSucceeded: false,
@@ -344,7 +360,7 @@ class _SetupScreenState extends State<SetupScreen> {
         _proof = ReadOnlyProof(
           connected: true,
           stage: ProofStage.fullyVerified,
-          messagesProbed: before.count,
+          messagesProbed: before.examined,
           alreadyReadBefore: before.count,
           newlyReadAfterExamine: markedByExamine,
           bodyFetchSucceeded: bodyOk,

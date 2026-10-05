@@ -49,6 +49,96 @@ void main() {
         newlyReadAfterBodyFetch: 0,
       );
 
+  group('a run that covered nothing must not claim a pass', () {
+    // The first successful connection did exactly this: every counter was 0,
+    // the population it looked at was empty, and the panel rendered
+    // "PASS -- examined 0 messages" in green. Zero diffs over zero messages is
+    // an absence of evidence, not evidence of read-only behaviour.
+    const vacuous = ReadOnlyProof(
+      connected: true,
+      stage: ProofStage.fullyVerified,
+      messagesProbed: 0,
+      alreadyReadBefore: 0,
+      newlyReadAfterExamine: 0,
+      bodyFetchSucceeded: true,
+      messagesFetched: 0,
+      newlyReadAfterBodyFetch: 0,
+    );
+
+    test('isReadOnly is false', () {
+      expect(vacuous.isReadOnly, isFalse);
+    });
+
+    test('hasCoverage is false', () {
+      expect(vacuous.hasCoverage, isFalse);
+    });
+
+    test('the verdict says nothing to check, not verified', () {
+      expect(vacuous.verdict, 'Read-only: nothing to check');
+      expect(vacuous.verdict, isNot(contains('verified')));
+    });
+
+    test('but a counted body fetch does count as coverage', () {
+      const proof = ReadOnlyProof(
+        connected: true,
+        stage: ProofStage.fullyVerified,
+        messagesProbed: 0,
+        alreadyReadBefore: 0,
+        newlyReadAfterExamine: 0,
+        bodyFetchSucceeded: true,
+        messagesFetched: 3,
+        newlyReadAfterBodyFetch: 0,
+      );
+      expect(proof.hasCoverage, isTrue, reason: 'bodies were read');
+      expect(proof.isReadOnly, isTrue);
+      expect(proof.verdict, 'Read-only: verified');
+    });
+  });
+
+  group('the population is reported honestly', () {
+    test('coverage and already-read are distinct numbers', () {
+      // A mostly-unread mailbox: 20 examined, none read. Conflating these is
+      // what produced "examined 0 messages" while messages were in fact covered.
+      const proof = ReadOnlyProof(
+        connected: true,
+        stage: ProofStage.fullyVerified,
+        messagesProbed: 20,
+        alreadyReadBefore: 0,
+        newlyReadAfterExamine: 0,
+        bodyFetchSucceeded: true,
+        messagesFetched: 5,
+        newlyReadAfterBodyFetch: 0,
+      );
+      expect(proof.hasCoverage, isTrue);
+      expect(proof.isReadOnly, isTrue);
+      expect(proof.verdict, 'Read-only: verified');
+      expect(proof.summary(), contains('examined 20 messages'));
+      expect(proof.summary(), contains('0 already read'));
+    });
+
+    test('the summary states what the body stage did', () {
+      expect(
+        clean().summary(),
+        contains('Bodies fetched without marking read: 5'),
+      );
+      expect(clean().summary(), contains('ok'));
+    });
+
+    test('a skipped body stage says so rather than reading as success', () {
+      const proof = ReadOnlyProof(
+        connected: true,
+        stage: ProofStage.examineVerified,
+        messagesProbed: 20,
+        alreadyReadBefore: 4,
+        newlyReadAfterExamine: 0,
+        bodyFetchSucceeded: false,
+        messagesFetched: 0,
+        newlyReadAfterBodyFetch: 0,
+      );
+      expect(proof.summary(), contains('not attempted'));
+    });
+  });
+
   group('a failed run must not claim read-only', () {
     test('the exact shape that produced the false positive', () {
       final proof = failedEarly();
@@ -80,41 +170,27 @@ void main() {
 
     test('no combination of zero counters can produce a full pass', () {
       // Exhaustive over both counters the old getter trusted, crossed with
-      // every stage and both connection states. Only a stage that records a
-      // completed measurement may report read-only.
+      // every stage, both connection states, and both zero and non-zero
+      // coverage. Only a completed measurement over a real population may
+      // report read-only.
       for (final connected in [true, false]) {
         for (final stage in ProofStage.values) {
-          final measured = stage != ProofStage.notRun;
-          final proof = ReadOnlyProof(
-            connected: connected,
-            stage: stage,
-            messagesProbed: 0,
-            alreadyReadBefore: 0,
-            newlyReadAfterExamine: 0,
-            bodyFetchSucceeded: false,
-            messagesFetched: 0,
-            newlyReadAfterBodyFetch: 0,
-          );
-          expect(
-            proof.isReadOnly,
-            measured && connected,
-            reason: 'stage $stage with connected=$connected',
-          );
-          if (!connected) {
-            expect(proof.summary(), 'Could not connect.');
-          } else {
-            // Only a fully completed run may print an unqualified PASS; a
-            // partially measured one must be visibly partial.
-            final expectedPrefix = switch (stage) {
-              ProofStage.fullyVerified => 'PASS —',
-              ProofStage.examineVerified || ProofStage.flagsVerified =>
-                'EXAMINE PASS —',
-              ProofStage.notRun => 'NOT CHECKED —',
-            };
+          for (final probed in [0, 20]) {
+            final measured = stage != ProofStage.notRun;
+            final proof = ReadOnlyProof(
+              connected: connected,
+              stage: stage,
+              messagesProbed: probed,
+              alreadyReadBefore: 0,
+              newlyReadAfterExamine: 0,
+              bodyFetchSucceeded: false,
+              messagesFetched: probed == 0 ? 0 : 5,
+              newlyReadAfterBodyFetch: 0,
+            );
             expect(
-              proof.summary(),
-              startsWith(expectedPrefix),
-              reason: 'stage $stage must label itself honestly',
+              proof.isReadOnly,
+              measured && connected && probed > 0,
+              reason: 'stage $stage, connected=$connected, probed=$probed',
             );
           }
         }
@@ -135,7 +211,11 @@ void main() {
         newlyReadAfterBodyFetch: 0,
       );
       expect(proof.isReadOnly, isFalse);
-      expect(proof.verdict, 'Read-only: verified');
+      expect(
+        proof.verdict,
+        'Read-only: problem',
+        reason: 'a measured violation must not read as verified',
+      );
       expect(
         proof.summary(),
         contains('FAIL'),
@@ -171,8 +251,13 @@ void main() {
       expect(proof.error, isNull);
     });
 
-    test('a zero-message mailbox is still a pass', () {
-      // Nothing to read is a legitimate outcome, not a failure.
+    test('an empty mailbox is NOT a pass — this test used to say the opposite', () {
+      // Previously this read "a zero-message mailbox is still a pass", on the
+      // reasoning that nothing to read is a legitimate outcome. That is true of
+      // the *pipeline* and false of the *proof*: a guarantee verified over
+      // zero messages has verified nothing, and the panel was rendering it as
+      // "PASS -- examined 0 messages" in green. The honest verdict is that
+      // there was nothing to check.
       const proof = ReadOnlyProof(
         connected: true,
         stage: ProofStage.fullyVerified,
@@ -183,7 +268,9 @@ void main() {
         messagesFetched: 0,
         newlyReadAfterBodyFetch: 0,
       );
-      expect(proof.isReadOnly, isTrue);
+      expect(proof.isReadOnly, isFalse);
+      expect(proof.hasCoverage, isFalse);
+      expect(proof.verdict, 'Read-only: nothing to check');
     });
   });
 
@@ -226,14 +313,14 @@ void main() {
       const proof = ReadOnlyProof(
         connected: true,
         stage: ProofStage.flagsVerified,
-        messagesProbed: 0,
-        alreadyReadBefore: 0,
+        messagesProbed: 20,
+        alreadyReadBefore: 3,
         newlyReadAfterExamine: 0,
         bodyFetchSucceeded: false,
         messagesFetched: 0,
         newlyReadAfterBodyFetch: 0,
       );
-      expect(proof.verdict, 'Read-only: EXAMINE verified only');
+      expect(proof.verdict, 'Read-only: partly verified');
     });
   });
 
