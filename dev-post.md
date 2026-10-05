@@ -1,31 +1,9 @@
-<!--
-SUBMISSION DRAFT — Hacktoberfest Weekend Challenge: Build for a Friend
-Publish at https://dev.to/new
-
-Title: I built an app that reads my dyslexic friend's email for him
-Tags:  devchallenge, weekendchallenge, hf26challenge
-AI disclosure: set to "Some usage of AI" — written with OpenCode as pair programmer.
-
-DevRelay MCP was NOT connected this session, so:
-  - this could not be staged as a draft via create_article
-  - the live challenge page could not be fetched for the exact template
-    (the template used here is the one pasted into the conversation)
-  - no agent session could be saved; see the placeholder below
-
-BEFORE PUBLISHING, replace every ⟦TODO⟧. Three cannot be written by me:
-  1. The hand-over section — has not happened. Do NOT invent a reaction.
-  2. Demo video URL.
-  3. Agent session link, if you save one.
-
-Then verify: no real email content, no screenshots of a real inbox, no keys.
--->
-
 *This is a submission for the [Hacktoberfest Weekend Challenge: Build for a Friend](https://dev.to/challenges/hacktoberfest-weekend-2026-10-01)*
 
 ## What I Built
 
 **Heads Up** — an Android home-screen widget that shows **at most three emails
-that actually matter**, as three short plain lines, each with a ▶ button so it
+that actually matter**, as three short plain lines, each with a play button so it
 can be listened to instead of read.
 
 I built it for a friend of mine.
@@ -35,9 +13,6 @@ just doesn't, because the inbox is a wall of text and the wall costs him more
 than the contents are worth. So important things sit there. A college form with
 a deadline. A question from a friend he wanted to answer. Things that would
 have taken four minutes, if he'd seen them on the day they arrived.
-
-⟦TODO: replace with one specific moment where he missed something, in his words
-if you have them. A real moment beats a general description of the problem.⟧
 
 ### The insight
 
@@ -53,27 +28,25 @@ already looks at forty times a day, written in the fewest words that still mean
 something, and a button instead of a paragraph.
 
 Three items maximum, ever. And when there's nothing, it says
-`Nothing needs you today ✓` rather than showing an empty box — an empty widget
-gets deleted, and a deleted widget gets missed.
+`Nothing needs you today` rather than showing an empty box — an empty widget gets
+deleted, and a deleted widget gets missed.
 
 ```
-┌─────────────────────────────────┐
-│  2 things need you today        │
-│                                 │
-│  ⚠ College form                 │
-│  College form                   │
-│  Submit ID proof  •  by Oct 10  │
-│                           ▶     │
-│                                 │
-│  ● Doctor                        │
-│  Appointment moved               │
-│  Call to confirm           ▶     │
-└─────────────────────────────────┘
++---------------------------------+
+|  2 things need you today        |
+|                                 |
+|  ! College form                 |
+|  College form                   |
+|  Submit ID proof  -  by Oct 10  |
+|                             >    |
+|                                 |
+|  * Doctor                        |
+|  Appointment moved               |
+|  Call to confirm           >    |
++---------------------------------+
 ```
 
 ## Demo
-
-<!-- ⟦TODO: demo video ⟧ -->
 
 Measured on the target phone (realme RMX3853, Android 16, arm64-v8a):
 
@@ -81,7 +54,7 @@ Measured on the target phone (realme RMX3853, Android 16, arm64-v8a):
 |---|---|
 | On-device inference | Gemma 3 1B-IT via LiteRT-LM — **2,109 ms** generation, 8,714 ms cold |
 | RAM during inference | 774 MB total PSS |
-| Widget ▶ → audio | mp3 path verified reaching `AudioTrack` |
+| Widget play button to audio | mp3 path verified reaching `AudioTrack` |
 | APK | 128.7 MB, down from 281.1 MB |
 
 Real output from the run that decided whether to keep the model at all:
@@ -96,9 +69,6 @@ BY: Oct 10
 the gate at "10 seconds per email, or fall back to a smaller model"; it came in
 at 8.7 s cold and ~2 s warm, so the 1B model stayed.
 
-⟦TODO: video, fabricated content only. If you narrate it with ElevenLabs, say so
-in the prize section.⟧
-
 ## Code
 
 {% embed https://github.com/mudit-palvadi/heads-up %}
@@ -108,16 +78,16 @@ MIT licensed. 32 commits, 277 tests, `flutter analyze` clean under
 
 ```mermaid
 flowchart TD
-    A["Gmail (IMAP)<br/>EXAMINE + BODY.PEEK"] --> B["Cleaner<br/>HTML → text, strip quotes/signatures"]
-    B --> C["RulesEngine<br/>VIP · keywords · deadlines · bulk"]
+    A["Gmail (IMAP)<br/>EXAMINE + BODY.PEEK"] --> B["Cleaner<br/>HTML to text, strip quotes and signatures"]
+    B --> C["RulesEngine<br/>VIP, keywords, deadlines, bulk"]
     C -->|not important| X["dropped"]
     C -->|important| D["Gemma 3 1B-IT<br/>on-device via LiteRT-LM"]
-    D --> E["Validator<br/>shape + deadline match"]
+    D --> E["Validator<br/>shape and deadline match"]
     E -->|rejected| F["Template fallback"]
-    E -->|accepted| G["ElevenLabs<br/>~30-word summary → mp3"]
+    E -->|accepted| G["ElevenLabs<br/>summary to mp3"]
     F --> H["WidgetSync"]
     G --> H
-    H --> I["Home screen widget<br/>max 3 rows + ▶"]
+    H --> I["Home screen widget<br/>max 3 rows"]
 ```
 
 ## How I Built It
@@ -142,9 +112,9 @@ engine can explain why an email is on the widget, that explanation survives.
 
 **The model is never allowed to invent a date.** The rules engine extracts
 deadlines by regex and hands the value to the prompt. If the model's `BY:`
-doesn't match, the entire output is **rejected** and a template is used
-instead. For someone who might act on a wrong date, a dull correct line beats a
-fluent wrong one every time.
+doesn't match, the entire output is **rejected** and a template is used instead.
+For someone who might act on a wrong date, a dull correct line beats a fluent
+wrong one every time.
 
 ## Why Does Open Innovation Matter?
 
@@ -179,17 +149,17 @@ the device.
 
 This is the part I didn't expect to be the story.
 
-I wrote three "guard" tests that were supposed to defend the central privacy
-claim — that the app can never mark an email read. All three were green. All
-three were worthless.
+I wrote three "guard" tests meant to defend the central privacy claim — that the
+app can never mark an email read. All three were green. All three were
+worthless.
 
 They asserted things about the **source text** rather than the **value the
 program actually uses**:
 
 ```dart
-expect(source, contains("'UID FLAGS'"));           // ✓ any mention passes
-expect(source, contains('BODY.PEEK[]'));           // ✓ a doc comment passes
-expect(source.indexOf('_saveAll()') > tryStart);   // ✓ a comment passes
+expect(source, contains("'UID FLAGS'"));           // any mention passes
+expect(source, contains('BODY.PEEK[]'));           // a doc comment passes
+expect(source.indexOf('_saveAll()') > tryStart);   // a comment passes
 ```
 
 A test can be green and prove nothing, and I had three of them guarding the one
@@ -199,12 +169,12 @@ a real phone, where a comment can't help.
 Then, once I had real diagnostics, the bugs arrived:
 
 1. **The INBOX descriptor couldn't be constructed.** I'd passed
-   `flags: const <MailboxFlag>[]`, and `enough_mail`'s constructor *mutates* that
-   list. Every IMAP read path threw. **The app could not read mail at all** — and
-   all 237 tests were green.
+   `flags: const <MailboxFlag>[]`, and `enough_mail`'s constructor *mutates*
+   that list. Every IMAP read path threw. **The app could not read mail at
+   all** — and all 237 tests were green.
 2. **The FLAGS probe sent an invalid IMAP command.** I'd asked for `UID` as a
-   FETCH data item, which RFC 3501 doesn't allow; Gmail replied `BAD Could not
-   parse command`.
+   FETCH data item, which RFC 3501 doesn't allow; Gmail replied
+   `BAD Could not parse command`.
 3. **The fetch criteria weren't parenthesised.** `enough_mail` documents them as
    `'(ENVELOPE BODY.PEEK[])'`. Gmail rejected the bare form.
 4. **The proof reported "read-only: VERIFIED" when it had verified nothing.**
@@ -213,8 +183,8 @@ Then, once I had real diagnostics, the bugs arrived:
 5. **A proof over zero messages reported PASS.** "No message became read" across
    an empty sample is an absence of evidence, not evidence.
 6. **The probe built a UID FETCH range from a message *count*.** On a mailbox
-   whose UIDs run into the tens of thousands, it asked for UIDs that don't exist
-   — and reported an empty population while the inbox was full.
+   whose UIDs run into the tens of thousands, it asked for UIDs that don't
+   exist — and reported an empty population while the inbox was full.
 
 The worst one was #4. Two commits earlier, the panel would have shown a calm
 green **"Read-only: verified"** on a run where the guarantee had not been
@@ -235,9 +205,9 @@ dead end into bug #6.
 
 - **The read-only guarantee is enforced by construction and unit-tested, but not
   yet measured on a populated mailbox.** The fix for the last blocker is
-  installed; the run is pending. I'm not claiming it until the panel prints a
-  non-zero examined count.
-- **TTS from the widget is currently not working.** The mp3 → `AudioTrack` path
+  installed; the confirming run is pending. I'm not claiming it until the panel
+  prints a non-zero examined count.
+- **TTS from the widget is currently not working.** The mp3 to `AudioTrack` path
   is verified. The offline `flutter_tts` fallback is wired end to end and is not
   yet working on the device — undiagnosed, and I ran out of runway before I
   could read the logs.
@@ -246,7 +216,7 @@ dead end into bug #6.
   made from the phone.
 - **The full pipeline has never completed end to end.** `runFull` is unit-tested
   with fakes only. The widget is currently showing fabricated rows from a
-  diagnostic harness, which is exactly what `runLight`/`runFull` would replace.
+  diagnostic harness, which is exactly what the pipeline would replace.
 - **Background refresh is best-effort and light-only.** Android's Doze mode can
   delay the job, and Gemma never runs in the background — too heavy, and the
   process gets killed mid-inference. Opening the app runs the full pipeline. A
@@ -264,24 +234,18 @@ dead end into bug #6.
   rewrites every flagged email, with each output validated against a
   rules-engine-extracted deadline before it's allowed to reach the screen.
 - **Best Use of ElevenLabs** — summaries are voiced with ElevenLabs and cached as
-  mp3s on the device so ▶ is instant and works offline.
-  ⟦TODO: only claim the video narration if you actually record one.⟧
+  mp3s on the device so play is instant and works offline.
 
 ## My Agent Session
 
-⟦TODO: DevRelay wasn't connected this session, so nothing was saved. If you
-connect it, save the session and embed with the `agent_session` tag per the
-challenge page. **Check the transcript for real email content and any keys
-first** — uploads are unlisted by default and judges need "Make Public".⟧
+Built with [OpenCode](https://opencode.ai) as the pair programmer. The session
+transcript is not attached here.
 
 ## The hand-over
 
-⟦TODO — this has not happened yet, and I would rather leave it empty than invent
-it. Per my own plan: his real words, not a paraphrase. If he was surprised,
-delighted, confused, or indifferent, say which. If the reaction is flat, the flat
-reaction is the finding.⟧
+**This hasn't happened yet**, and I'd rather say that than invent it.
 
-What I do know is what the plan is, and it isn't "set it up for him":
+The plan is deliberately not "set it up for him":
 
 1. Show him what he already missed.
 2. **Let him add the people he cares about to the VIP list himself.**
