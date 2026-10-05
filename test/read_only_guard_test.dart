@@ -13,6 +13,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:heads_up/services/mail_service.dart';
 
 String _libPath(List<String> parts) => parts.join(Platform.pathSeparator);
 
@@ -162,19 +163,66 @@ void main() {
   });
 
   group('the probe used to prove read-only behaviour is itself safe', () {
+    // This used to assert the *source text* contained the literal
+    // "'UID FLAGS'", which was satisfied by any mention of the string
+    // anywhere — including a doc comment — and checked nothing about what was
+    // actually sent. It passed happily while the probe was sending an invalid
+    // command. Now it asserts the live constant and the real call site.
     test('probeFlags fetches flags only, never content', () {
+      expect(
+        kFlagsOnlyFetch,
+        'FLAGS',
+        reason: 'the probe must request only FLAGS',
+      );
+      expect(
+        kFlagsOnlyFetch,
+        isNot(contains('BODY')),
+        reason: 'the flags probe must not fetch content',
+      );
+      expect(
+        kFlagsOnlyFetch,
+        isNot(contains('UID')),
+        reason: 'UID is not a requestable FETCH item; Gmail answers BAD',
+      );
+    });
+
+    test('probeFlags uses the flags-only definition, not the body one', () {
       final mailServicePath = 'lib${Platform.pathSeparator}services'
           '${Platform.pathSeparator}mail_service.dart';
       final source = File(mailServicePath).readAsStringSync();
 
-      // Fetching UID FLAGS cannot set \Seen under RFC 3501, which is what makes
-      // the before/after diff trustworthy against a real account.
-      expect(source, contains("'UID FLAGS'"));
-      // And it must never be combined with a body fetch.
+      // Extract probeFlags' body and confirm which constant it fetches with.
+      final start = source.indexOf('Future<FlagSnapshot> probeFlags(');
+      expect(start, isNot(-1), reason: 'probeFlags not found');
+
+      var depth = 0;
+      var seenBrace = false;
+      var end = -1;
+      for (var i = source.indexOf('async {', start);
+          i < source.length && end < 0;
+          i++) {
+        final c = source[i];
+        if (c == '{') {
+          depth++;
+          seenBrace = true;
+        } else if (c == '}') {
+          depth--;
+          if (seenBrace && depth == 0) end = i;
+        }
+      }
+      expect(end, isNot(-1), reason: 'could not delimit probeFlags');
+      final body = source.substring(start, end);
+
       expect(
-        source.contains('UID FLAGS BODY'),
-        isFalse,
-        reason: 'flags probe must not fetch content',
+        body,
+        contains('kFlagsOnlyFetch'),
+        reason: 'probeFlags must fetch with kFlagsOnlyFetch',
+      );
+      expect(
+        body,
+        isNot(contains('kReadOnlyFetch')),
+        reason: 'probeFlags must never send the BODY.PEEK[] definition — that '
+            'is the thing it exists to avoid doing before the diff is taken',
       );
     });
   });
