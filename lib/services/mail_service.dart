@@ -42,6 +42,18 @@ const int kMaxMessageBytes = 500000;
 /// `BODY.PEEK[]` is load-bearing. `BODY[]` would mark messages read.
 const String kReadOnlyFetch = 'BODY.PEEK[] ENVELOPE FLAGS RFC822.SIZE';
 
+/// Fetch data items for a flags-only probe.
+///
+/// **`UID` is deliberately NOT requested.** RFC 3501 §6.4.8 does not list it as
+/// a FETCH data item — the server includes the UID automatically in every
+/// `UID FETCH` response, so asking for it as well makes Gmail answer
+/// `BAD Could not parse command`. Found on the third live Spike B run.
+///
+/// `enough_mail` parses the UID out of the response regardless of what was
+/// requested (`FetchParser._parseFetch` handles `case 'UID'` on the response
+/// side), so nothing is lost by leaving it out.
+const String kFlagsOnlyFetch = 'FLAGS';
+
 /// Upper bound on the TCP/TLS connect and on the login exchange.
 ///
 /// Deliberately generous: this runs on a phone over mobile data, and a
@@ -271,7 +283,7 @@ class MailService {
 
     final sequence = MessageSequence()..addLast();
     try {
-      final result = await _client.uidFetchMessages(sequence, 'UID FLAGS');
+      final result = await _client.uidFetchMessages(sequence, kFlagsOnlyFetch);
       assertNoMessagesMarkedRead(result.messages);
       final uids = result.messages.map((m) => m.uid ?? 0).toList();
       return uids.isEmpty ? 0 : uids.reduce((a, b) => a > b ? a : b);
@@ -299,7 +311,7 @@ class MailService {
       );
 
     try {
-      final result = await _client.uidFetchMessages(sequence, 'UID FLAGS');
+      final result = await _client.uidFetchMessages(sequence, kFlagsOnlyFetch);
       return FlagSnapshot(
         result.messages
             .where((m) => m.isSeen)
