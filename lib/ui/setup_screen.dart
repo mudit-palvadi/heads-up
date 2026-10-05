@@ -20,10 +20,32 @@ import 'package:heads_up/services/mail_service.dart';
 import 'package:heads_up/services/store.dart';
 import 'package:heads_up/ui/theme.dart';
 
+/// Which stage of the read-only proof was actually reached.
+///
+/// Explicit because the counters default to reassuring values: on every failure
+/// path `newlyReadAfterExamine` and `newlyReadAfterBodyFetch` are both 0, which
+/// is indistinguishable from a clean run unless we also record whether the diff
+/// was *measured*. The first live run rendered "Read-only: verified" in green
+/// while simultaneously reporting that the check had failed.
+enum ProofStage {
+  /// Never ran, or failed before the flags probe produced a snapshot.
+  notRun,
+
+  /// Signed in, and both FLAGS probes came back with no change.
+  flagsVerified,
+
+  /// Signed in; EXAMINE was inert, but the BODY.PEEK[] stage has not finished.
+  examineVerified,
+
+  /// Every stage completed.
+  fullyVerified,
+}
+
 /// Outcome of the read-only proof run.
 class ReadOnlyProof {
   const ReadOnlyProof({
     required this.connected,
+    required this.stage,
     required this.messagesProbed,
     required this.alreadyReadBefore,
     required this.newlyReadAfterExamine,
@@ -31,9 +53,13 @@ class ReadOnlyProof {
     required this.messagesFetched,
     required this.newlyReadAfterBodyFetch,
     this.error,
+    this.errorDetail,
   });
 
   final bool connected;
+
+  /// How far the proof actually got. Drives the verdict — never the counters.
+  final ProofStage stage;
 
   /// How many messages the flags probe covered.
   final int messagesProbed;
@@ -53,14 +79,53 @@ class ReadOnlyProof {
 
   final String? error;
 
+  /// The underlying error verbatim, shown beneath the friendly [error].
+  ///
+  /// `_translate` puts the real IMAP text in `MailException.message`; rendering
+  /// only the friendly copy threw away the single most useful clue. The first
+  /// live run reported "Something went wrong reading your mail" and nothing
+  /// else, which made the cause unrecoverable without guessing.
+  final String? errorDetail;
+
   /// The whole guarantee in one boolean: nothing we did marked anything read.
-  bool get isReadOnly =>
-      connected && newlyReadAfterExamine == 0 && newlyReadAfterBodyFetch == 0;
+  ///
+  /// Requires a *measured* stage, never just zero counters. A run that failed
+  /// early leaves both counters at 0, and treating that as a pass is exactly
+  /// the false positive this guards against.
+  bool get isReadOnly => switch (stage) {
+        ProofStage.fullyVerified || ProofStage.examineVerified ||
+        ProofStage.flagsVerified =>
+          connected &&
+              newlyReadAfterExamine == 0 &&
+              newlyReadAfterBodyFetch == 0,
+        ProofStage.notRun => false,
+      };
+
+  /// Nothing was measured, so nothing can be claimed either way.
+  bool get isUnverified => stage == ProofStage.notRun;
+
+  /// Heading. Three states, never two — a failed run must not read as a pass.
+  String get verdict => switch (stage) {
+        ProofStage.fullyVerified => 'Read-only: verified',
+        ProofStage.examineVerified => 'Read-only: partly verified',
+        ProofStage.flagsVerified => 'Read-only: EXAMINE verified only',
+        ProofStage.notRun =>
+          connected ? 'Read-only: not checked' : 'Read-only: not checked',
+      };
 
   String summary() {
     if (error != null) return 'Failed: $error';
     if (!connected) return 'Could not connect.';
-    final verdict = isReadOnly ? 'PASS' : 'FAIL';
+
+    // Stage-driven, not counter-driven. A partial run must not print "PASS":
+    // the guarantee has two halves and only one of them was measured.
+    final verdict = switch (stage) {
+      ProofStage.fullyVerified => isReadOnly ? 'PASS' : 'FAIL',
+      ProofStage.examineVerified => isReadOnly ? 'EXAMINE PASS' : 'FAIL',
+      ProofStage.flagsVerified => isReadOnly ? 'EXAMINE PASS' : 'FAIL',
+      ProofStage.notRun => 'NOT CHECKED',
+    };
+
     return '$verdict — examined $messagesProbed messages, '
         '$alreadyReadBefore already read; '
         'EXAMINE marked $newlyReadAfterExamine read, '
@@ -237,6 +302,11 @@ class _SetupScreenState extends State<SetupScreen> {
       final afterExamine = await service.probeFlags();
       final markedByExamine = before.newlySeen(afterExamine).length;
 
+      // Past this point the EXAMINE half of the guarantee is *measured*, so a
+      // later failure can honestly say "EXAMINE verified" rather than
+      // "not checked".
+      const stageAfterExamine = ProofStage.examineVerified;
+
       // Stage 3 — now, and only now, fetch bodies with BODY.PEEK[].
       var fetched = 0;
       var bodyOk = false;
@@ -253,6 +323,7 @@ class _SetupScreenState extends State<SetupScreen> {
         setState(() {
           _proof = ReadOnlyProof(
             connected: true,
+            stage: stageAfterExamine,
             messagesProbed: before.count,
             alreadyReadBefore: before.count,
             newlyReadAfterExamine: markedByExamine,
@@ -260,6 +331,7 @@ class _SetupScreenState extends State<SetupScreen> {
             messagesFetched: 0,
             newlyReadAfterBodyFetch: 0,
             error: e.message,
+            errorDetail: 'during the BODY.PEEK[] fetch: ${e.message}',
           );
         });
         return;
@@ -269,6 +341,7 @@ class _SetupScreenState extends State<SetupScreen> {
       setState(() {
         _proof = ReadOnlyProof(
           connected: true,
+          stage: ProofStage.fullyVerified,
           messagesProbed: before.count,
           alreadyReadBefore: before.count,
           newlyReadAfterExamine: markedByExamine,
@@ -278,10 +351,13 @@ class _SetupScreenState extends State<SetupScreen> {
         );
       });
     } on MailException catch (e) {
+      // Thrown by connect() or by one of the two FLAGS probes. `connected`
+      // distinguishes them, and errorDetail keeps the raw IMAP text.
       if (!mounted) return;
       setState(() {
         _proof = ReadOnlyProof(
           connected: connected,
+          stage: ProofStage.notRun,
           messagesProbed: 0,
           alreadyReadBefore: 0,
           newlyReadAfterExamine: 0,
@@ -289,6 +365,9 @@ class _SetupScreenState extends State<SetupScreen> {
           messagesFetched: 0,
           newlyReadAfterBodyFetch: 0,
           error: e.userFacing,
+          errorDetail: connected
+              ? 'during the FLAGS probe: ${e.message}'
+              : 'during sign-in: ${e.message}',
         );
       });
     } catch (e) {
@@ -302,6 +381,7 @@ class _SetupScreenState extends State<SetupScreen> {
       setState(() {
         _proof = ReadOnlyProof(
           connected: connected,
+          stage: ProofStage.notRun,
           messagesProbed: 0,
           alreadyReadBefore: 0,
           newlyReadAfterExamine: 0,
@@ -309,8 +389,11 @@ class _SetupScreenState extends State<SetupScreen> {
           messagesFetched: 0,
           newlyReadAfterBodyFetch: 0,
           error: connected
-              ? 'Signed in fine, but the read-only check failed: $e'
-              : 'Could not finish the check: $e',
+              ? 'Signed in fine, but the read-only check failed.'
+              : 'Could not finish the check.',
+          errorDetail: connected
+              ? 'after sign-in: $e'
+              : 'during sign-in: $e',
         );
       });
     } finally {
@@ -506,8 +589,18 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Widget _proofPanel(ThemeData theme, ReadOnlyProof proof) {
-    final colour =
-        proof.isReadOnly ? HeadsUpColors.calm : HeadsUpColors.urgent;
+    // Three states, never two. Green is only ever shown for a run that
+    // actually measured both diffs; an unmeasured run is neutral grey, so it
+    // can never be mistaken for a pass.
+    final (colour, icon) = switch (proof.stage) {
+      ProofStage.fullyVerified => (HeadsUpColors.calm, Icons.verified_outlined),
+      ProofStage.examineVerified || ProofStage.flagsVerified => (
+          HeadsUpColors.textSecondary,
+          Icons.help_outline,
+        ),
+      ProofStage.notRun => (HeadsUpColors.urgent, Icons.error_outline),
+    };
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -518,15 +611,45 @@ class _SetupScreenState extends State<SetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            proof.isReadOnly ? 'Read-only: verified' : 'Read-only: problem',
-            style: theme.textTheme.bodyMedium?.copyWith(color: colour),
+          Row(
+            children: [
+              Icon(icon, size: 18, color: colour),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  proof.verdict,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: colour),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           SelectableText(
             proof.summary(),
             style: theme.textTheme.labelSmall,
           ),
+
+          // The raw IMAP text. Without this the panel said only "something went
+          // wrong", which made the first live failure unrecoverable without
+          // guessing. Selectable so it can be copied into a bug report.
+          if (proof.errorDetail != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Details',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: HeadsUpColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            SelectableText(
+              proof.errorDetail!,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: HeadsUpColors.textSecondary,
+                fontFamily: 'monospace',
+                fontSize: 11,
+              ),
+            ),
+          ],
         ],
       ),
     );
