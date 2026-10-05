@@ -339,13 +339,23 @@ class MailService {
     final mailbox = await examineInbox();
     if (mailbox.messagesExists == 0) return const FlagSnapshot({}, examined: 0);
 
-    // Walk backwards from the newest so the newest N are covered even in a
-    // large mailbox.
-    final sequence = MessageSequence()
-      ..addRange(
-        mailbox.messagesExists > take ? mailbox.messagesExists - take : 1,
-        mailbox.messagesExists,
-      );
+    // The range must be expressed in UIDs, not sequence positions.
+    //
+    // This used to be built from `mailbox.messagesExists`, which is a *count*,
+    // and then sent as `UID FETCH <count-take>:<count>`. `UID FETCH` treats
+    // its range as UIDs, and on any mailbox that has been used for a while the
+    // UIDs run far ahead of the message count (deleted mail, imports). So the
+    // probe asked for UIDs 1..20 on an account whose UIDs were in the tens of
+    // thousands, matched nothing, and the panel reported
+    // `PASS — examined 0 messages` on a mailbox that had mail in it.
+    //
+    // Resolve the newest UID first, then step back [take] from it. Bounded, and
+    // correct regardless of how the mailbox has been used.
+    final newest = await newestUid();
+    if (newest == 0) return const FlagSnapshot({}, examined: 0);
+
+    final start = (newest - take + 1).clamp(1, newest);
+    final sequence = MessageSequence()..addRange(start, newest);
 
     try {
       final result = await _client.uidFetchMessages(sequence, kFlagsOnlyFetch);
@@ -360,7 +370,12 @@ class MailService {
         examined: result.messages.length,
       );
     } on ImapException catch (e) {
-      throw _translate(e);
+      final translated = _translate(e);
+      throw MailException(
+        translated.failure,
+        '${translated.message}\n'
+            'Sent: ${describeFetch('$start:$newest', kFlagsOnlyFetch)}',
+      );
     }
   }
 
